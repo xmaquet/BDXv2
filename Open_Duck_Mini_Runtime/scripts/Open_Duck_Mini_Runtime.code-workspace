@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../Open_Duck_Mini"
+		},
+		{
+			"path": "../../../../PyCharmMiscProject/OpenBot"
+		}
+	],
+	"settings": {}
+}

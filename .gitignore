@@ -1,0 +1,19 @@
+# OS / éditeur
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python (racine)
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Android SDK local (chemins machine)
+**/local.properties
