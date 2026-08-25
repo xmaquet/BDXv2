@@ -39,9 +39,11 @@ Il n’y a pas, pour la v1, d’autre rôle (public, enfant, technicien distinct
 
 La première version réussit si l’opérateur peut **animer les accessoires autres que la marche** (lumières, sons, et assimilés) sur le robot réel.
 
-La **marche RL n’est pas** le critère de succès de cette phase.
+La **marche RL n’est pas** le critère de succès du **mode test**.
 
-Précisé par **D-007** (quels accessoires) et **D-008** (comment les animer).
+Amendée par **D-010** : le **mode normal** réintroduit la marche, avec les accessoires en parallèle (comportement des scripts initiaux).
+
+Précisé par **D-007**, **D-008** et **D-010**.
 
 ---
 
@@ -69,11 +71,11 @@ Mode d’inclusion : **D-009** (copie dans le monorepo, Git imbriqués abandonn�
 
 ## D-006 — Marche hors périmètre immédiat
 
-**Statut :** adoptée par déduction de D-003 (2026-08-24)
+**Statut :** amendée (2026-08-24, PO — D-010)
 
-Améliorer, fiabiliser ou exposer la **locomotion** n’est pas le travail de la phase accessoires.
+La locomotion n’est **pas** le livrable du mode test.
 
-Le code de marche **n’est pas à supprimer** ; il n’est simplement pas le livrable.
+Le **mode normal** doit faire les actions d’expression **en parallèle de la marche**, conformément aux scripts initiaux. Le code de marche est conservé et sera branché dans ce mode.
 
 ---
 
@@ -103,6 +105,8 @@ Les deux modes existent :
 
 Le **live tablette d’abord**. Les séquences suivent, dans la même phase produit, sans précéder le pupitre.
 
+**Précision D-010 :** le live se matérialise d’abord par le **mode test** (fonctions une à une). Les « séquences » ne sont pas le mode normal : le mode normal = expressions **pendant** la marche, comme les scripts d’origine.
+
 ---
 
 ## D-009 — Monorepo : copie, un seul Git
@@ -117,6 +121,93 @@ Provenance figée au moment de l’aplatissement :
 
 - Runtime : `518d53bf2257f682be45a017db499fb94326d267` (`feature/bdx_webui`)
 - Mini : `5c8e06442e5848239e5b0bc856b1d80e07d4a44c` (`v2`)
+
+---
+
+## D-010 — Deux modes UI tablette : test et normal
+
+**Statut :** adoptée (2026-08-24, PO)
+
+L’application Android expose deux modes :
+
+- **Test** : l’opérateur lance **une fonction à la fois** (yeux, projecteur, HP, antennes).
+- **Normal** : le droid exécute ces actions **en parallèle de la marche**, effet réaliste, **conforme aux scripts initiaux**.
+
+Le mode test est le premier objectif logiciel après que le Pi soit installé et joignable. Le mode normal vient ensuite.
+
+---
+
+## D-011 — HAT opérateur, GPIO d’origine, 2N2222
+
+**Statut :** adoptée (2026-08-24, PO)
+
+L’opérateur a réalisé un **HAT** pour le Pi Zero 2W.
+
+Les lumières (yeux, projecteur) sont commutées via des **2N2222**. Les **broches GPIO restent celles d’origine** du runtime (`eyes.py` : D23 / D24 ; `projector.py` : D25).
+
+Les **servos d’oreilles** (antennes) sont branchés.
+
+**Hypothèse technique (à vérifier sur le HAT) :** commande GPIO active-high vers la base du NPN, lumière allumée quand le GPIO est à 1 — compatible avec le code actuel. À confirmer au premier test GPIO.
+
+**Vérifié (2026-08-25, PO, banc SSH D-016) :** polarité **active-high** confirmée pour le projecteur **D25** et les yeux **D23 / D24** (fixe ON/OFF et clignotement nominaux).
+
+---
+
+## D-012 — Script d’installation Pi comme livrable
+
+**Statut :** adoptée (2026-08-24, PO)
+
+Après une install OS neuve, l’opérateur doit pouvoir lancer **un script d’install complet** sur le Pi.
+
+Les scripts existants (`install.sh`, `scripts/bdx_full_install.sh`) sont un point de départ (**ADAPTER**, pas réécrire sans besoin). Ils pointent encore vers l’ancien dépôt / branche `v2` : ils devront cibler **BDXv2**.
+
+---
+
+## D-013 — Pilotage SSH par l’agent après l’OS
+
+**Statut :** adoptée (2026-08-24, PO)
+
+Une fois l’OS réinstallé, l’agent se connecte au Pi en **SSH** pour piloter installation, tests et actions.
+
+Pas de connexion SSH tant que l’OS n’est pas en place.
+
+---
+
+## D-014 — Programmation STS3215 via FT SCServo Debug
+
+**Statut :** adoptée (2026-08-24, PO)
+
+Les servos corps / tête **STS3215** se programment avec le logiciel **FT SCServo Debug v1.9.8.1** (un servo à la fois, IDs du projet).
+
+Ce n’est **pas** le même bus que les servos d’oreilles (PWM GPIO D12/D13 dans `antennas.py`).
+
+---
+
+## D-015 — Tablette APK + BLE bidirectionnel ; vidéo plus tard
+
+**Statut :** adoptée (2026-08-25, PO)
+
+Le volet tablette est une **application Android (APK)** plus un **module sur le BDX** (Pi).
+
+Les **commandes** circulent en **Bluetooth Low Energy dans les deux sens** (tablette ↔ robot).
+
+La **vidéo** (Picam déjà en place) est un objectif **ultérieur**, pas le critère du premier livrable BLE.
+
+---
+
+## D-016 — Banc de test SSH (fonctions virtuelles, hors UI)
+
+**Statut :** adoptée (2026-08-25, PO)
+
+Pour tester les accessoires **sans** l’UI tablette : menu texte en SSH qui lance de **mini-scripts**.
+
+Menu figé (2026-08-25) : `1` yeux fixe, `2` yeux clignotement, `3` projecteur, `4` HP, `5` antennes, `0`/`q` quitter.
+
+**Inclus :** fonctions d’expression hors locomotion (yeux, projecteur, HP, antennes / oreilles PWM).
+
+**Exclus :** marche RL, bus **STS3215**.
+
+**Avancement :** lots 1–3 **validés** sur le robot (2026-08-25, PO) — projecteur `3`, yeux `1`/`2`, HP `4` (I2S MAX98357A, câblage correct). Antennes `5` : pas encore.
 
 ---
 

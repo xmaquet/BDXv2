@@ -4,7 +4,7 @@
 Banc, pas démo salon : le matériel est forcé. ~/duck_config.json et
 expression_features ne sont pas lus.
 
-Lot 1 : entrée 3 (projecteur). Les autres numéros restent « pas encore ».
+Lots : projecteur (3), yeux (1/2), HP (4), antennes (5).
 """
 
 from __future__ import annotations
@@ -18,11 +18,10 @@ Banc d'expression BDXv2 (SSH) — GPIO forcé, duck_config ignoré
   2  Yeux         clignotement marche / arrêt
   3  Projecteur   allumer / éteindre
   4  Haut-parleur jouer un son
-  5  Antennes     oscillation ~2 s puis neutre
+  5  Antennes     oscillation ~2 s puis PWM relâché
+  6  Antennes     90° puis PWM relâché (réglage des lobes)
   0 / q           quitter (GPIO / PWM relâchés)
 """
-
-NOT_YET = "Pas encore (lot suivant)."
 
 
 def _fail_not_on_robot(exc: BaseException) -> None:
@@ -30,8 +29,9 @@ def _fail_not_on_robot(exc: BaseException) -> None:
     print(f"CircuitPython / board introuvable ou inutilisable : {exc}")
 
 
-def _load_projector():
+def _load_hardware():
     try:
+        from mini_bdx_runtime.eyes import Eyes
         from mini_bdx_runtime.projector import Projector
     except ImportError as exc:
         missing = getattr(exc, "name", "") or ""
@@ -43,26 +43,99 @@ def _load_projector():
             print("  cd ~/BDXv2/Open_Duck_Mini_Runtime && source .venv/bin/activate")
             print(f"Détail : {exc}")
         sys.exit(1)
+
+    projector = None
+    eyes = None
     try:
-        return Projector()
+        projector = Projector()
+        eyes = Eyes(auto_start=False)
+        sounds = _load_sounds()
+        return projector, eyes, sounds
     except Exception as exc:
+        if eyes is not None:
+            try:
+                eyes.stop()
+            except Exception:
+                pass
+        if projector is not None:
+            try:
+                projector.stop()
+            except Exception:
+                pass
         _fail_not_on_robot(exc)
         sys.exit(1)
 
 
-def _cleanup(projector) -> None:
-    if projector is None:
-        return
+def _load_sounds():
     try:
-        projector.stop()
-    except Exception as exc:
-        print(f"Nettoyage projecteur : {exc}")
+        from mini_bdx_runtime.sounds import Sounds, default_assets_directory
+    except ImportError as exc:
+        print(f"Haut-parleur indisponible : {exc}")
+        return None
+    sounds = Sounds(volume=1.0, sound_directory=default_assets_directory())
+    if not sounds.ok:
+        print("Haut-parleur : mixer ou WAV indisponible.")
+    return sounds
+
+
+def _pulse_antennas_90() -> None:
+    try:
+        from mini_bdx_runtime.antennas import Antennas
+    except ImportError as exc:
+        print(f"Antennes indisponibles : {exc}")
+        return
+    antennas = Antennas()
+    try:
+        print(f"Antennes : consigne 90° ({antennas.backend})…")
+        antennas.set_center()
+        print("Antennes : 90°, PWM relâché. Tu peux poser les lobes.")
+    finally:
+        antennas.stop()
+
+
+def _run_antenna_wiggle() -> None:
+    try:
+        from mini_bdx_runtime.antennas import Antennas
+    except ImportError as exc:
+        print(f"Antennes indisponibles : {exc}")
+        return
+    antennas = Antennas()
+    try:
+        print(f"Antennes : oscillation 2 s ({antennas.backend})…")
+        antennas.oscillate(duration=2.0, frequency=1.0)
+        print("Antennes : neutre, PWM relâché")
+    finally:
+        antennas.stop()
+
+
+def _cleanup(projector, eyes, sounds) -> None:
+    if sounds is not None:
+        try:
+            sounds.stop()
+        except Exception as exc:
+            print(f"Nettoyage son : {exc}")
+    if eyes is not None:
+        try:
+            eyes.stop()
+        except Exception as exc:
+            print(f"Nettoyage yeux : {exc}")
+    if projector is not None:
+        try:
+            projector.stop()
+        except Exception as exc:
+            print(f"Nettoyage projecteur : {exc}")
 
 
 def main() -> int:
     print(MENU)
-    projector = _load_projector()
+    projector, eyes, sounds = _load_hardware()
     print("Projecteur : OFF (D25)")
+    print("Yeux : OFF (D24 / D23)")
+    if sounds is not None and sounds.ok:
+        print(f"Haut-parleur : {len(sounds.sounds)} WAV chargés")
+    else:
+        print("Haut-parleur : indisponible")
+    print("Antennes : PWM coupé hors geste (5 / 6)")
 
     try:
         while True:
@@ -77,8 +150,33 @@ def main() -> int:
             if choice == "":
                 print(MENU)
                 continue
-            if choice in ("1", "2", "4", "5"):
-                print(NOT_YET)
+            if choice == "5":
+                _run_antenna_wiggle()
+                continue
+            if choice == "6":
+                _pulse_antennas_90()
+                continue
+            if choice == "4":
+                if sounds is None or not sounds.ok:
+                    print("Haut-parleur indisponible.")
+                else:
+                    sounds.play_random_sound()
+                continue
+            if choice == "1":
+                if eyes.steady_on and not eyes.is_blinking():
+                    eyes.set_off()
+                    print("Yeux : OFF")
+                else:
+                    eyes.set_on()
+                    print("Yeux : ON (fixe)")
+                continue
+            if choice == "2":
+                if eyes.is_blinking():
+                    eyes.set_off()
+                    print("Yeux : clignotement OFF")
+                else:
+                    eyes.start_blink()
+                    print("Yeux : clignotement ON")
                 continue
             if choice == "3":
                 projector.switch()
@@ -91,7 +189,7 @@ def main() -> int:
     except KeyboardInterrupt:
         print()
     finally:
-        _cleanup(projector)
+        _cleanup(projector, eyes, sounds)
         print("GPIO relâché. Au revoir.")
 
     return 0

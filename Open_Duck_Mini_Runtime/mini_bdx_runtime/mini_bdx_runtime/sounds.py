@@ -1,15 +1,36 @@
-import pygame
-import time
 import os
 import random
+import time
+
+import pygame
+
+
+def default_assets_directory():
+    """WAV du package, indépendant du cwd.
+
+    sounds.py vit dans mini_bdx_runtime/mini_bdx_runtime/ ;
+    les assets sont dans mini_bdx_runtime/assets/.
+    """
+    return os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
+    )
 
 
 class Sounds:
-    def __init__(self, volume=1.0, sound_directory="./"):
-        pygame.mixer.init()
-        pygame.mixer.music.set_volume(volume)
+    def __init__(self, volume=1.0, sound_directory=None):
+        if sound_directory is None:
+            sound_directory = default_assets_directory()
         self.sounds = {}
         self.ok = True
+        self._mixer_ready = False
+        try:
+            pygame.mixer.init()
+            pygame.mixer.music.set_volume(volume)
+            self._mixer_ready = True
+        except pygame.error as e:
+            print(f"pygame mixer init failed: {e}")
+            self.ok = False
+            return
         try:
             for file in os.listdir(sound_directory):
                 if file.endswith(".wav"):
@@ -42,17 +63,25 @@ class Sounds:
             return
         sound_name = random.choice(list(self.sounds.keys()))
         self.sounds[sound_name].play()
+        print(f"Playing: {sound_name}")
 
     def play_happy(self):
-        self.sounds["happy1.wav"].play()
+        self.play("happy1.wav")
+
+    def stop(self):
+        if not self._mixer_ready:
+            return
+        try:
+            pygame.mixer.stop()
+            pygame.mixer.quit()
+        except pygame.error as e:
+            print(f"pygame mixer stop: {e}")
+        self._mixer_ready = False
 
 
-
-# Example usage
 if __name__ == "__main__":
-    sound_player = Sounds(1.0, "../assets/")
+    sound_player = Sounds(1.0)
     time.sleep(1)
     while True:
-        # sound_player.play_random_sound()
         sound_player.play_happy()
         time.sleep(3)

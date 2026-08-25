@@ -1,67 +1,64 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-24 (lot 0 : monorepo Git unique).
+Dernière mise à jour : 2026-08-25 (banc SSH : projecteur, yeux, HP validés ; install runtime complète lot 2 pas lancée).
 
 ## Situation du projet
 
-**Brownfield cadrée** : produit de démonstration autour d’un Open Duck Mini existant, dépôt unique `xmaquet/BDXv2`.
+**Brownfield cadrée.** Dépôt unique : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2)
+
+Le Pi Zero 2W a un **OS Lite 64-bit neuf**. SSH joignable (user `bdxv2`, IP constatée `192.168.10.131`). Install runtime **complète** (D-012) **pas lancée**.
+
+Minimum banc SSH : venv + Blinka + pygame + `Projector` / `Eyes` / `Sounds` dans `~/BDXv2/Open_Duck_Mini_Runtime/`. I2S : `dtoverlay=max98357a`. Menu : `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_expression_menu.sh`. **FAIT robot :** `3` projecteur ; `1`/`2` yeux ; `4` HP — nominaux. Polarité lumières **active-high**. Câblage MAX98357 **correct**.
 
 ## Contenu du workspace
-
-Dépôt canonique : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2)
 
 | Chemin | Rôle |
 |--------|------|
 | `AGENTS.md` | Règles permanentes des agents |
-| `docs/` | Canon : état, décisions, prochain lot |
-| `Open_Duck_Mini/` | Hub mécanique / sim / politiques (copie, plus de Git propre) |
-| `Open_Duck_Mini_Runtime/` | Runtime Pi + app tablette BLE (copie, plus de Git propre) |
+| `docs/` | Canon projet |
+| `Open_Duck_Mini/` | Mécanique / sim |
+| `Open_Duck_Mini_Runtime/` | Runtime Pi + app tablette BLE |
 
-Provenance au moment de l’aplatissement : voir **D-009**.
+## Matériel opérateur (déclaré)
 
-## Ce que le logiciel existant fait vraiment
+- HAT Pi : lumières yeux/projecteur via **2N2222**, GPIO **d’origine** (polarité active-high **vérifiée**).
+- HP I2S **MAX98357A** : overlay actif, câblage **vérifié** (banc SSH `4`).
+- Servos d’oreilles **branchés** (PWM D12/D13 dans le runtime, pas STS3215) — pas encore testés au banc.
+- STS3215 programmés avec **FT SCServo Debug v1.9.8.1**.
 
-Un opérateur peut faire **marcher** un Open Duck Mini depuis une **manette Xbox** ou une **tablette Android (BLE)**.
+## Logiciel existant (inchangé)
 
-Les **accessoires d’expression** existent côté Pi, mais :
+Accessoires encore collés au script de marche ; tablette = manette virtuelle ; flags `expression_features` faux par défaut.
 
-- ils ne démarrent que si `~/duck_config.json` a les flags `expression_features` à `true` ;
-- ils sont **pilotés depuis le script de marche** ou `head_puppet.py` — pas depuis un mode « démo accessoires » ;
-- la tablette émule une manette, pas un pupitre accessoires.
+GPIO d’origine : yeux D23/D24, projecteur D25, antennes PWM D12/D13.
 
-| Accessoire v1 (D-007) | Comportement actuel |
-|----------------------|---------------------|
-| Yeux | Clignotement **autonome** (pas de commande opérateur) |
-| Projecteur | Bascule ON/OFF via bouton **X** |
-| Haut-parleur | Son **aléatoire** via bouton **B** |
-| Antennes | Position analogique via **LT/RT** |
+## Cible (roadmap révisée)
 
-## Cible produit (v1)
+1. OS neuf + SSH.
+2. Script d’install complet (D-012).
+3. UI **mode test** : fonctions une à une en BLE.
+4. UI **mode normal** : expressions pendant la marche (scripts initiaux).
 
-Démo salon / bot-makers, opérateur = PO.
-
-**Succès :** actionner depuis l’UI tablette les quatre accessoires ci-dessus (live d’abord, séquences ensuite). La marche n’est pas le critère.
-
-## Classification de l’existant
+## Classification
 
 ### CONSERVER
 
-- Runtime Pi, modules `eyes.py`, `projector.py`, `sounds.py`, `antennas.py`.
-- Chaîne BLE tablette (`feature/bdx_webui`).
-- Contrat `ControllerFrame` v1 comme base, à **étendre** pour un pupitre accessoires.
+- Modules accessoires et GPIO.
+- Chaîne BLE existante.
+- Scripts `v2_rl_walk_mujoco.py` comme référence du mode normal.
+- `install.sh` / `bdx_full_install.sh` comme base du script d’install.
 
 ### ADAPTER
 
-- Découpler les accessoires du script de marche.
-- Yeux : passer d’un clignotement autonome à une commande tablette.
-- UI tablette : actions de démo explicites (pas seulement mapping manette).
+- Scripts d’install : cibler `xmaquet/BDXv2` au lieu du fork runtime `v2`.
+- UI : modes test / normal (D-010).
+- Yeux en mode test : commande opérateur, pas seulement clignotement autonome.
 
 ### REMPLACER
 
-- Git imbriqués des forks : **fait / en cours** (D-009).
-- Réingénierie large de la stack : **reportée** (D-C).
+- Rien de nouveau. Réingénierie large reportée (D-C).
 
 ### À INVESTIGUER
 
-- Licence du runtime amont (pas de `LICENSE` à la racine ; Mini = Apache 2.0).
-- Maturité réelle du lien BLE tablette ↔ Pi sur le matériel de l’opérateur.
+- Licence runtime amont.
+- Maturité BLE sur le matériel réel.
