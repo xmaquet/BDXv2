@@ -207,7 +207,7 @@ Menu figé (2026-08-25) : `1` yeux fixe, `2` yeux clignotement, `3` projecteur, 
 
 **Exclus :** marche RL, bus **STS3215**.
 
-**Avancement :** lots 1–3 **validés** sur le robot (2026-08-25, PO) — projecteur `3`, yeux `1`/`2`, HP `4` (I2S MAX98357A, câblage correct). Antennes `5` : pas encore.
+**Avancement :** banc SSH **clos** (2026-08-25, PO) — projecteur `3`, yeux `1`/`2`, HP `4`, antennes `5`/`6`. Pi : clone Git `~/BDXv2` (HEAD `a998892`), venv conservé.
 
 ---
 

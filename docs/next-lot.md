@@ -62,7 +62,7 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ## Parallèle — Banc SSH fonctions virtuelles
 
-**Statut :** lots 1–3 **validés** (2026-08-25, PO) — projecteur `3`, yeux `1`/`2`, HP `4` (MAX98357A). Suite : antennes (`5`). Prompt : `docs/hardware/PROMPT-agent-ssh-test-menu.md`. Décision **D-016**.
+**Statut :** **clos** (2026-08-25, PO). Projecteur, yeux, HP, antennes validés. Clone Git sur le Pi : `~/BDXv2`. Prompt : `docs/hardware/PROMPT-agent-ssh-test-menu.md`. Décision **D-016**.
 
 **Objectif :** menu texte en SSH qui lance des mini-scripts d’accessoires, **hors UI**, **hors marche**, **hors STS3215**.
 

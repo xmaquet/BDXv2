@@ -1,14 +1,14 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-25 (banc SSH : projecteur, yeux, HP validés ; install runtime complète lot 2 pas lancée).
+Dernière mise à jour : 2026-08-25 (banc SSH clos ; clone Git sur le Pi ; install runtime complète lot 2 pas lancée).
 
 ## Situation du projet
 
 **Brownfield cadrée.** Dépôt unique : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2)
 
-Le Pi Zero 2W a un **OS Lite 64-bit neuf**. SSH joignable (user `bdxv2`, IP constatée `192.168.10.131`). Install runtime **complète** (D-012) **pas lancée**.
+Le Pi Zero 2W a un **OS Lite 64-bit neuf**. SSH joignable (user `bdxv2`, IP constatée `192.168.10.131`). Clone Git : `~/BDXv2` (remote GitHub, HEAD du banc `a998892`). Venv banc conservé. Install runtime **complète** (D-012 / `install.sh`) **pas lancée**.
 
-Minimum banc SSH : venv + Blinka + pygame + `Projector` / `Eyes` / `Sounds` dans `~/BDXv2/Open_Duck_Mini_Runtime/`. I2S : `dtoverlay=max98357a`. Menu : `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_expression_menu.sh`. **FAIT robot :** `3` projecteur ; `1`/`2` yeux ; `4` HP — nominaux. Polarité lumières **active-high**. Câblage MAX98357 **correct**.
+Minimum banc SSH : venv + Blinka + pygame + `lgpio` (antennes) dans `~/BDXv2/Open_Duck_Mini_Runtime/`. I2S : `dtoverlay=max98357a`. Menu : `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_expression_menu.sh`. **FAIT robot :** `1`–`6` nominaux (yeux, projecteur, HP, antennes). Polarité lumières **active-high**. Câblage MAX98357 **correct**.
 
 ## Contenu du workspace
 
