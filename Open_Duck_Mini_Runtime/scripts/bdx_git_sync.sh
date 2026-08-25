@@ -14,9 +14,16 @@ if ! command -v git >/dev/null 2>&1; then
   exit 1
 fi
 
+_exclude_docs() {
+  # Le robot n'a pas besoin de docs/ (D-017). Checkout partiel.
+  git -C "${DEST}" sparse-checkout init --no-cone
+  git -C "${DEST}" sparse-checkout set '/*' '!/docs' '!/docs/**'
+}
+
 if [[ -d "${DEST}/.git" ]]; then
   echo "Dépôt déjà présent — git pull --ff-only"
   git -C "${DEST}" pull --ff-only
+  _exclude_docs
   git -C "${DEST}" log -1 --oneline
   exit 0
 fi
@@ -29,6 +36,7 @@ fi
 
 echo "Clone ${REPO_URL} → ${DEST}"
 git clone --depth 1 "${REPO_URL}" "${DEST}"
+_exclude_docs
 
 if [[ -d "${BACKUP}/${VENV_REL}" ]]; then
   echo "Restauration du venv"

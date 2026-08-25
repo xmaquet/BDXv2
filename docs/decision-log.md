@@ -207,7 +207,17 @@ Menu figé (2026-08-25) : `1` yeux fixe, `2` yeux clignotement, `3` projecteur, 
 
 **Exclus :** marche RL, bus **STS3215**.
 
-**Avancement :** banc SSH **clos** (2026-08-25, PO) — projecteur `3`, yeux `1`/`2`, HP `4`, antennes `5`/`6`. Pi : clone Git `~/BDXv2` (HEAD `a998892`), venv conservé.
+**Avancement :** banc SSH **clos** (2026-08-25, PO) — projecteur `3`, yeux `1`/`2`, HP `4`, antennes `5`/`6`. Pi : clone Git `~/BDXv2` (venv conservé).
+
+---
+
+## D-017 — Mini-outils SSH + pas de docs sur le robot
+
+**Statut :** adoptée (2026-08-25, PO)
+
+Les tests / réglages passent par un **menu principal** (`run_bdx_lab.sh`) qui lance des mini-scripts **choisis un par un**. Aucune entrée n’est ajoutée par scan du dépôt : seulement sur demande explicite du PO. Premier outil : banc d’expression (D-016).
+
+Le checkout Git **sur le Pi** n’inclut pas `docs/` (inutile à l’exécution). Les docs restent dans le dépôt GitHub / le workspace PC.
 
 ---
 
