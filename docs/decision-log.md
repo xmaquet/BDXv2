@@ -159,7 +159,9 @@ Les **servos d’oreilles** (antennes) sont branchés.
 
 Après une install OS neuve, l’opérateur doit pouvoir lancer **un script d’install complet** sur le Pi.
 
-Les scripts existants (`install.sh`, `scripts/bdx_full_install.sh`) sont un point de départ (**ADAPTER**, pas réécrire sans besoin). Ils pointent encore vers l’ancien dépôt / branche `v2` : ils devront cibler **BDXv2**.
+Les scripts existants sont un point de départ (**ADAPTER**, pas réécrire sans besoin).
+
+**Avancement (2026-08-25) :** `install.sh` cible **`xmaquet/BDXv2`** branche `main` ; `bdx_full_install.sh` et `install_bdx_runtime.sh` délèguent. **Pas encore exécuté** sur le Pi.
 
 ---
 
@@ -169,7 +171,7 @@ Les scripts existants (`install.sh`, `scripts/bdx_full_install.sh`) sont un poin
 
 Une fois l’OS réinstallé, l’agent se connecte au Pi en **SSH** pour piloter installation, tests et actions.
 
-Pas de connexion SSH tant que l’OS n’est pas en place.
+**Avancement (2026-08-25) :** OS posé ; SSH joignable (`bdxv2@192.168.10.131` constaté). La clause « pas de SSH avant l’OS » est **satisfaite**.
 
 ---
 
@@ -180,6 +182,8 @@ Pas de connexion SSH tant que l’OS n’est pas en place.
 Les servos corps / tête **STS3215** se programment avec le logiciel **FT SCServo Debug v1.9.8.1** (un servo à la fois, IDs du projet).
 
 Ce n’est **pas** le même bus que les servos d’oreilles (PWM GPIO D12/D13 dans `antennas.py`).
+
+**Avancement (2026-08-26) :** les 14 IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (offset EEPROM 0, D=0, Lock=1). Calibration `find_soft_offsets.py` **pas commencée**. Pas de test bus une fois montés.
 
 ---
 
@@ -192,6 +196,8 @@ Le volet tablette est une **application Android (APK)** plus un **module sur le 
 Les **commandes** circulent en **Bluetooth Low Energy dans les deux sens** (tablette ↔ robot).
 
 La **vidéo** (Picam déjà en place) est un objectif **ultérieur**, pas le critère du premier livrable BLE.
+
+**Avancement (2026-08-25) :** audit code fait ; **pas** d’APK, **pas** de test BLE. Lot 3a (dump TX/RX) proposé, non autorisé.
 
 ---
 
