@@ -8,8 +8,8 @@ android {
         applicationId "com.xmaquet.open_duck_mini_runtime"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 15
+        versionName "1.2.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -45,6 +45,13 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
+
+// Recopie www à chaque build Android Studio (Clean/Rebuild vide sinon les assets gitignorés).
+tasks.register('copyWebAssets', Copy) {
+    from file("${project.projectDir}/../../www")
+    into file("${project.projectDir}/src/main/assets/public")
+}
+tasks.named('preBuild').configure { dependsOn('copyWebAssets') }
 
 try {
     def servicesJSON = file('google-services.json')

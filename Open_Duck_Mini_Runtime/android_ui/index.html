@@ -1,15 +1,30 @@
-
-  <!DOCTYPE html>
-  <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Interface de manette Xbox</title>
-    </head>
-
-    <body>
-      <div id="root"></div>
-      <script type="module" src="/src/main.tsx"></script>
-    </body>
-  </html>
-  
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BDXv2</title>
+    <style>
+      html, body, #root {
+        margin: 0;
+        min-height: 100%;
+        background: #111827;
+        color: #e5e7eb;
+        font-family: sans-serif;
+      }
+      #boot {
+        margin: 0;
+        padding: 24px;
+        font-size: 22px;
+        font-weight: 700;
+        color: #ffffff;
+        background: #111827;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="boot">BDXv2 — chargement de l’interface…</p>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

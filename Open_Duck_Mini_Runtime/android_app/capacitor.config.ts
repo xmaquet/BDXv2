@@ -2,12 +2,19 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.xmaquet.open_duck_mini_runtime',
-  appName: 'Open Duck Mini Controller',
+  appName: 'BDXv2',
   webDir: 'www',
   bundledWebRuntime: false,
+  server: {
+    // Origine Capacitor par défaut. https://bdxv2 ne termine jamais le
+    // chargement sur WebView 150 (evaluateJavascript ne s’exécute pas).
+    androidScheme: 'https',
+    hostname: 'localhost',
+  },
   android: {
-    allowMixedContent: false
-  }
+    allowMixedContent: true,
+    webContentsDebuggingEnabled: true,
+  },
 };
 
 export default config;

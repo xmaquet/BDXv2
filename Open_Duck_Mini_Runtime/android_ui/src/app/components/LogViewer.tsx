@@ -11,9 +11,10 @@ interface LogEntry {
 interface LogViewerProps {
   logs: LogEntry[];
   onClearLogs: () => void;
+  live?: boolean;
 }
 
-export function LogViewer({ logs, onClearLogs }: LogViewerProps) {
+export function LogViewer({ logs, onClearLogs, live = false }: LogViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,11 +101,11 @@ export function LogViewer({ logs, onClearLogs }: LogViewerProps) {
       {/* Footer indicator */}
       <div className="px-3 py-1 bg-gray-900 border-t border-gray-700 flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Réception Bluetooth active
+          {live ? 'Réception BLE active' : 'Hors connexion'}
         </span>
         <div className="flex items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-          <span className="text-xs text-gray-500">Live</span>
+          <div className={`w-1.5 h-1.5 rounded-full ${live ? 'bg-blue-500 animate-pulse' : 'bg-gray-600'}`} />
+          <span className="text-xs text-gray-500">{live ? 'Live' : 'Off'}</span>
         </div>
       </div>
     </div>

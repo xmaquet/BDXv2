@@ -1,14 +1,32 @@
 package com.xmaquet.open_duck_mini_runtime
 
 import android.Manifest
-import android.bluetooth.*
-import android.bluetooth.le.*
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.BluetoothLeScanner
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
-import com.getcapacitor.*
+import androidx.core.content.ContextCompat
+import com.getcapacitor.JSObject
+import com.getcapacitor.Logger
+import com.getcapacitor.PermissionState
+import com.getcapacitor.Plugin
+import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
@@ -38,8 +56,8 @@ class RobotBlePlugin : Plugin() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val defaultServiceUuid = UUID.fromString("12345678-1234-5678-1234-56789abcdef0")
-    private val defaultTxUuid = UUID.fromString("12345678-1234-5678-1234-56789abcdef1") // Android -> Robot (write)
-    private val defaultRxUuid = UUID.fromString("12345678-1234-5678-1234-56789abcdef2") // Robot -> Android (notify)
+    private val defaultTxUuid = UUID.fromString("12345678-1234-5678-1234-56789abcdef1")
+    private val defaultRxUuid = UUID.fromString("12345678-1234-5678-1234-56789abcdef2")
 
     private var serviceUuid: UUID = defaultServiceUuid
     private var txUuid: UUID = defaultTxUuid
@@ -60,6 +78,16 @@ class RobotBlePlugin : Plugin() {
 
     private val writeQueue: ConcurrentLinkedQueue<ByteArray> = ConcurrentLinkedQueue()
     private var writing: Boolean = false
+    private var writeEpoch: Int = 0
+    private var pendingPayload: String? = null
+    private var rxReady: Boolean = false
+    private var cccdPending: Boolean = false
+    private var cccdEpoch: Int = 0
+    private var servicesDiscovered: Boolean = false
+    private var notificationsStarted: Boolean = false
+    private var gattCacheInvalidated: Boolean = false
+    private var rxNotifyLogs: Int = 0
+    private val cccdUuid: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
     private var lastSendMs: Long = 0
     private var estopEnabled: Boolean = false
@@ -68,17 +96,63 @@ class RobotBlePlugin : Plugin() {
     private val watchdogTimeoutMs = 500L
     private var watchdogRunning = false
 
-    override fun load() {
-        super.load()
-        val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothAdapter = manager.adapter
-        scanner = bluetoothAdapter?.bluetoothLeScanner
-        startWatchdog()
+    fun interface NativeStringCallback {
+        fun onResult(value: String)
+    }
+
+    fun interface NativeStatusCallback {
+        fun onStatus(connected: Boolean)
+    }
+
+    fun interface NativeRxCallback {
+        fun onText(text: String)
+    }
+
+    private var nativeOnDevice: NativeStringCallback? = null
+    private var nativeOnError: NativeStringCallback? = null
+    var nativeOnStatus: NativeStatusCallback? = null
+    var nativeOnRx: NativeRxCallback? = null
+    var nativeOnLog: NativeStringCallback? = null
+
+    private fun hasScanPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_SCAN) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun hasConnectPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) ==
+                PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun ensureBle(): Boolean {
+        if (bluetoothAdapter != null) return true
+        return try {
+            val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+            bluetoothAdapter = manager.adapter
+            if (hasScanPermission()) {
+                scanner = bluetoothAdapter?.bluetoothLeScanner
+            }
+            startWatchdog()
+            bluetoothAdapter != null
+        } catch (e: SecurityException) {
+            Logger.error("RobotBle ensureBle permission", e)
+            false
+        } catch (e: Exception) {
+            Logger.error("RobotBle ensureBle", e)
+            false
+        }
     }
 
     private fun ensurePermissions(call: PluginCall): Boolean {
-        // Android 12+ requires BLUETOOTH_SCAN/CONNECT runtime permissions.
-        // Pre-12 needs location for scan.
         val needsBluetooth = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         val needsLocation = Build.VERSION.SDK_INT < Build.VERSION_CODES.S
 
@@ -91,15 +165,20 @@ class RobotBlePlugin : Plugin() {
         return false
     }
 
+    @Suppress("unused")
     @PermissionCallback
     private fun permissionsCallback(call: PluginCall) {
         if (!ensurePermissions(call)) return
-        // Retry connect after permissions granted
         connect(call)
     }
 
+    @Suppress("unused")
     @PluginMethod
     fun connect(call: PluginCall) {
+        if (!ensureBle()) {
+            call.reject("Bluetooth indisponible")
+            return
+        }
         if (!ensurePermissions(call)) return
 
         serviceUuid = UUID.fromString(call.getString("serviceUuid") ?: defaultServiceUuid.toString())
@@ -116,19 +195,86 @@ class RobotBlePlugin : Plugin() {
 
         disconnectInternal()
 
-        if (targetAddress != null) {
-            val device = adapter.getRemoteDevice(targetAddress)
-            connectGatt(device)
-            call.resolve(JSObject().put("deviceName", device.name ?: "Robot"))
+        nativeOnDevice = NativeStringCallback { name -> call.resolve(JSObject().put("deviceName", name)) }
+        nativeOnError = NativeStringCallback { msg -> call.reject(msg) }
+
+        val address = targetAddress
+        if (address != null) {
+            if (!hasConnectPermission()) {
+                call.reject("Permission Bluetooth manquante")
+                return
+            }
+            try {
+                val device = adapter.getRemoteDevice(address)
+                connectGatt(device)
+                val name = if (hasConnectPermission()) device.name ?: "Robot" else "Robot"
+                resolveDevice(name)
+            } catch (e: SecurityException) {
+                call.reject("Permission Bluetooth refusée")
+            }
             return
         }
 
-        startScan(call)
+        startScan()
     }
 
-    private fun startScan(call: PluginCall) {
+    fun connectNative(onDevice: NativeStringCallback, onError: NativeStringCallback) {
+        if (!ensureBle()) {
+            onError.onResult("Bluetooth indisponible")
+            return
+        }
+        if (!hasScanPermission() || !hasConnectPermission()) {
+            onError.onResult("Permission Bluetooth manquante")
+            return
+        }
+        val adapter = bluetoothAdapter
+        if (adapter == null || !adapter.isEnabled) {
+            onError.onResult("Bluetooth indisponible ou désactivé")
+            return
+        }
+        nativeOnDevice = onDevice
+        nativeOnError = onError
+        autoReconnect = true
+        targetAddress = null
+        disconnectInternal()
+        startScan()
+    }
+
+    fun disconnectNative() {
+        autoReconnect = false
+        disconnectInternal()
+        nativeOnStatus?.onStatus(false)
+    }
+
+    fun sendNative(payload: String) {
+        lastSendMs = System.currentTimeMillis()
+        pendingPayload = if (estopEnabled) buildNeutralFrame(estop = true) else payload
+        writePendingIfIdle()
+    }
+
+    fun isLinkReady(): Boolean = gatt != null && txChar != null && rxReady
+
+    private fun resolveDevice(name: String) {
+        val cb = nativeOnDevice
+        nativeOnDevice = null
+        nativeOnError = null
+        cb?.onResult(name)
+    }
+
+    private fun rejectPending(message: String) {
+        val cb = nativeOnError
+        nativeOnDevice = null
+        nativeOnError = null
+        cb?.onResult(message)
+    }
+
+    private fun startScan() {
+        if (!hasScanPermission()) {
+            rejectPending("Permission Bluetooth manquante")
+            return
+        }
         val leScanner = scanner ?: run {
-            call.reject("Scanner BLE indisponible")
+            rejectPending("Scanner BLE indisponible")
             return
         }
 
@@ -149,47 +295,95 @@ class RobotBlePlugin : Plugin() {
                 targetAddress = device.address
                 stopScan()
                 connectGatt(device)
-                call.resolve(JSObject().put("deviceName", device.name ?: "Robot"))
+                val name = try {
+                    if (hasConnectPermission()) device.name ?: "Robot" else "Robot"
+                } catch (_: SecurityException) {
+                    "Robot"
+                }
+                resolveDevice(name)
             }
 
             override fun onScanFailed(errorCode: Int) {
-                call.reject("Scan BLE échoué: $errorCode")
+                rejectPending("Scan BLE échoué: $errorCode")
             }
         }
 
-        leScanner.startScan(filters, settings, scanCallback)
+        try {
+            leScanner.startScan(filters, settings, scanCallback)
+        } catch (e: SecurityException) {
+            rejectPending("Permission Bluetooth refusée")
+            return
+        }
 
-        // Timeout scan
         mainHandler.postDelayed({
             if (gatt == null) {
                 stopScan()
-                call.reject("Scan BLE timeout (aucun robot trouvé)")
+                rejectPending("Scan BLE timeout (aucun robot trouvé)")
             }
         }, 10_000)
     }
 
     private fun stopScan() {
         val cb = scanCallback ?: return
-        scanner?.stopScan(cb)
         scanCallback = null
+        if (!hasScanPermission()) return
+        try {
+            scanner?.stopScan(cb)
+        } catch (_: SecurityException) {
+        }
     }
 
     private fun connectGatt(device: BluetoothDevice) {
-        gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        if (!hasConnectPermission()) {
+            rejectPending("Permission Bluetooth manquante")
+            return
+        }
+        try {
+            gatt = device.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+        } catch (e: SecurityException) {
+            rejectPending("Permission Bluetooth refusée")
+        }
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(g: BluetoothGatt, status: Int, newState: Int) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                g.discoverServices()
-                g.requestMtu(247)
+                servicesDiscovered = false
+                notificationsStarted = false
+                rxReady = false
+                cccdPending = false
+                mtu = 23
+                rxNotifyLogs = 0
+                // Flux GATT Android standard : discovery → MTU → CCCD (une opération à la fois, thread UI).
+                mainHandler.post {
+                    if (gatt !== g || !hasConnectPermission()) return@post
+                    try {
+                        g.discoverServices()
+                    } catch (_: SecurityException) {
+                    }
+                }
                 notifyListeners("status", JSObject().put("connected", true))
+                mainHandler.post { nativeOnStatus?.onStatus(true) }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 txChar = null
                 rxChar = null
                 writing = false
+                rxReady = false
+                cccdPending = false
+                notificationsStarted = false
+                mtu = 23
+                servicesDiscovered = false
                 writeQueue.clear()
+                Logger.warn("RobotBle GATT disconnected status=$status")
+                try {
+                    g.close()
+                } catch (_: Exception) {
+                }
+                if (gatt === g) {
+                    gatt = null
+                }
                 notifyListeners("status", JSObject().put("connected", false))
+                mainHandler.post { nativeOnStatus?.onStatus(false) }
                 if (autoReconnect) {
                     scheduleReconnect()
                 }
@@ -200,53 +394,241 @@ class RobotBlePlugin : Plugin() {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 mtu = mtuValue
             }
+            emitLog("MTU=$mtuValue status=$status")
+            if (servicesDiscovered && !notificationsStarted) {
+                mainHandler.post { enableNotifications(g) }
+            }
         }
 
         override fun onServicesDiscovered(g: BluetoothGatt, status: Int) {
-            if (status != BluetoothGatt.GATT_SUCCESS) return
-            val service = g.getService(serviceUuid) ?: return
+            if (status != BluetoothGatt.GATT_SUCCESS || servicesDiscovered) return
+            servicesDiscovered = true
+            val service = g.getService(serviceUuid) ?: run {
+                emitLog("Service GATT introuvable")
+                if (!invalidateGattCacheAndRediscover(g, "service absent")) {
+                    finishSetup()
+                }
+                return
+            }
             txChar = service.getCharacteristic(txUuid)
             rxChar = service.getCharacteristic(rxUuid)
-            enableNotificationsIfPossible(g)
+            mainHandler.post { requestMtuThenSubscribe(g) }
         }
 
+        @Deprecated("Deprecated in Java")
+        @Suppress("DEPRECATION")
         override fun onCharacteristicChanged(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            val bytes = characteristic.value ?: return
-            val text = String(bytes, StandardCharsets.UTF_8)
-            val payload = JSObject().put("text", text)
-            notifyListeners("rx", payload)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) return
+            val bytes = characteristic.value
+            if (bytes == null || bytes.isEmpty()) {
+                emitLog("notify vide uuid=${characteristic.uuid}")
+                return
+            }
+            onGattRx(characteristic, bytes)
+        }
+
+        override fun onCharacteristicChanged(
+            g: BluetoothGatt,
+            characteristic: BluetoothGattCharacteristic,
+            value: ByteArray
+        ) {
+            onGattRx(characteristic, value)
         }
 
         override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
-            writing = false
-            if (status != BluetoothGatt.GATT_SUCCESS) {
-                notifyListeners("rx", JSObject().put("text", "{\"type\":\"log\",\"level\":\"error\",\"message\":\"BLE write error: $status\"}"))
-                writeQueue.clear()
-            } else {
-                writeNextChunk()
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                completeWrite()
+                return
             }
+            if (status == 143) {
+                mainHandler.postDelayed({ completeWrite() }, 40)
+                return
+            }
+            Logger.warn("RobotBle write status=$status")
+            completeWrite()
+        }
+
+        override fun onDescriptorWrite(g: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
+            if (!cccdPending) return
+            cccdPending = false
+            cccdEpoch++
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                emitLog("Notifications RX activées (CCCD)")
+                finishSetup()
+                return
+            }
+            // 0x01 = GATT_INVALID_HANDLE : cache d’attributs périmé (Android + GATT qui a changé).
+            if (status == 1 && invalidateGattCacheAndRediscover(g, "CCCD status=1")) {
+                return
+            }
+            emitLog("CCCD non écrit (status=$status) — le robot n’enverra pas de notify tant que 0x2902 n’est pas accepté")
+            finishSetup()
         }
     }
 
-    private fun enableNotificationsIfPossible(g: BluetoothGatt) {
-        val c = rxChar ?: return
-        g.setCharacteristicNotification(c, true)
-        val desc = c.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")) ?: return
-        desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-        g.writeDescriptor(desc)
+    private fun onGattRx(characteristic: BluetoothGattCharacteristic, bytes: ByteArray) {
+        if (rxNotifyLogs < 5) {
+            rxNotifyLogs++
+            emitLog("notify uuid=${characteristic.uuid} len=${bytes.size}")
+        }
+        if (characteristic.uuid != rxUuid) return
+        val text = String(bytes, StandardCharsets.UTF_8)
+        notifyListeners("rx", JSObject().put("text", text))
+        mainHandler.post { nativeOnRx?.onText(text) }
+    }
+
+    private fun emitLog(message: String) {
+        Logger.info("RobotBle $message")
+        mainHandler.post { nativeOnLog?.onResult(message) }
+    }
+
+    /**
+     * Une seule invalidation de cache par session (pas de boucle refresh → disconnect → refresh).
+     * `BluetoothGatt.refresh()` est l’API cachée utilisée par les libs BLE Android
+     * pour forcer une rediscovery après GATT_INVALID_HANDLE.
+     */
+    private fun invalidateGattCacheAndRediscover(g: BluetoothGatt, reason: String): Boolean {
+        if (gattCacheInvalidated) return false
+        gattCacheInvalidated = true
+        servicesDiscovered = false
+        notificationsStarted = false
+        cccdPending = false
+        rxReady = false
+        txChar = null
+        rxChar = null
+        var refreshed = false
+        try {
+            val method = g.javaClass.getMethod("refresh")
+            refreshed = method.invoke(g) as? Boolean == true
+        } catch (_: Exception) {
+        }
+        emitLog("Rediscovery GATT ($reason) refresh=$refreshed")
+        mainHandler.postDelayed({
+            if (gatt !== g || !hasConnectPermission()) return@postDelayed
+            try {
+                g.discoverServices()
+            } catch (_: SecurityException) {
+            }
+        }, 400)
+        return true
+    }
+
+    private fun finishSetup() {
+        rxReady = txChar != null
+        if (txChar == null) {
+            emitLog("Caractéristique TX absente")
+        } else {
+            emitLog("Lien prêt (TX)")
+        }
+        mainHandler.post { writePendingIfIdle() }
+    }
+
+    private fun requestMtuThenSubscribe(g: BluetoothGatt) {
+        if (!hasConnectPermission()) {
+            enableNotifications(g)
+            return
+        }
+        try {
+            if (!g.requestMtu(517)) {
+                enableNotifications(g)
+                return
+            }
+        } catch (_: SecurityException) {
+            enableNotifications(g)
+            return
+        }
+        mainHandler.postDelayed({
+            if (gatt === g && !notificationsStarted) {
+                emitLog("MTU timeout — poursuite CCCD avec MTU=$mtu")
+                enableNotifications(g)
+            }
+        }, 1000)
+    }
+
+    private fun enableNotifications(g: BluetoothGatt) {
+        if (notificationsStarted) return
+        notificationsStarted = true
+        if (!hasConnectPermission()) {
+            emitLog("Permission Bluetooth manquante pour CCCD")
+            finishSetup()
+            return
+        }
+        val c = rxChar
+        if (c == null) {
+            emitLog("Caractéristique RX absente")
+            finishSetup()
+            return
+        }
+        emitLog("RX properties=${c.properties}")
+        try {
+            g.setCharacteristicNotification(c, true)
+        } catch (_: SecurityException) {
+            emitLog("setCharacteristicNotification refusé")
+            finishSetup()
+            return
+        }
+        val desc = c.getDescriptor(cccdUuid)
+        if (desc == null) {
+            emitLog("Descripteur CCCD 0x2902 absent")
+            finishSetup()
+            return
+        }
+        cccdPending = true
+        val epoch = ++cccdEpoch
+        val parent = desc.characteristic
+        @Suppress("DEPRECATION")
+        val previousWriteType = parent.writeType
+        try {
+            @Suppress("DEPRECATION")
+            parent.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            val queued = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeDescriptor(desc, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE) == BluetoothGatt.GATT_SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                @Suppress("DEPRECATION")
+                g.writeDescriptor(desc)
+            }
+            if (!queued) {
+                cccdPending = false
+                emitLog("writeDescriptor CCCD refusé par la file GATT")
+                finishSetup()
+                return
+            }
+            mainHandler.postDelayed({
+                if (cccdPending && epoch == cccdEpoch) {
+                    cccdPending = false
+                    emitLog("CCCD timeout — pas de callback writeDescriptor")
+                    finishSetup()
+                }
+            }, 2000)
+        } catch (_: SecurityException) {
+            cccdPending = false
+            emitLog("writeDescriptor CCCD : SecurityException")
+            finishSetup()
+        } finally {
+            try {
+                @Suppress("DEPRECATION")
+                parent.writeType = previousWriteType
+            } catch (_: Exception) {
+            }
+        }
     }
 
     private fun scheduleReconnect() {
         mainHandler.postDelayed({
             val adapter = bluetoothAdapter ?: return@postDelayed
-            val addr = targetAddress
-            if (addr != null) {
-                val dev = adapter.getRemoteDevice(addr)
-                connectGatt(dev)
+            val address = targetAddress ?: return@postDelayed
+            if (!hasConnectPermission()) return@postDelayed
+            try {
+                val device = adapter.getRemoteDevice(address)
+                connectGatt(device)
+            } catch (_: SecurityException) {
             }
         }, 1500)
     }
 
+    @Suppress("unused")
     @PluginMethod
     fun disconnect(call: PluginCall) {
         autoReconnect = false
@@ -268,20 +650,28 @@ class RobotBlePlugin : Plugin() {
         txChar = null
         rxChar = null
         writing = false
+        writeEpoch++
+        rxReady = false
+        cccdPending = false
+        servicesDiscovered = false
+        notificationsStarted = false
+        gattCacheInvalidated = false
+        mtu = 23
+        cccdEpoch++
+        pendingPayload = null
         writeQueue.clear()
     }
 
+    @Suppress("unused")
     @PluginMethod
     fun emergencyStop(call: PluginCall) {
         estopEnabled = call.getBoolean("enabled", false) == true
-        if (estopEnabled) {
-            enqueuePayload(buildNeutralFrame(estop = true))
-        } else {
-            enqueuePayload(buildNeutralFrame(estop = false))
-        }
+        pendingPayload = buildNeutralFrame(estop = estopEnabled)
+        writePendingIfIdle()
         call.resolve()
     }
 
+    @Suppress("unused")
     @PluginMethod
     fun send(call: PluginCall) {
         val payload = call.getString("payload")
@@ -291,13 +681,22 @@ class RobotBlePlugin : Plugin() {
         }
         lastSendMs = System.currentTimeMillis()
         if (estopEnabled) {
-            // Tant que l'estop est actif, on ignore les commandes et on renvoie des frames neutres.
-            enqueuePayload(buildNeutralFrame(estop = true))
+            pendingPayload = buildNeutralFrame(estop = true)
+            writePendingIfIdle()
             call.resolve()
             return
         }
-        enqueuePayload(payload)
+        pendingPayload = payload
+        writePendingIfIdle()
         call.resolve()
+    }
+
+    private fun writePendingIfIdle() {
+        if (writing || cccdPending) return
+        val payload = pendingPayload ?: return
+        if (writeQueue.isNotEmpty()) return
+        pendingPayload = null
+        enqueuePayload(payload)
     }
 
     private fun enqueuePayload(payload: String) {
@@ -313,15 +712,48 @@ class RobotBlePlugin : Plugin() {
         writeNextChunk()
     }
 
+    private fun completeWrite() {
+        writeEpoch++
+        writing = false
+        writeNextChunk()
+    }
+
     private fun writeNextChunk() {
-        if (writing) return
+        if (writing || cccdPending) return
+        if (!hasConnectPermission()) return
         val g = gatt ?: return
         val c = txChar ?: return
-        val chunk = writeQueue.poll() ?: return
+        val chunk = writeQueue.poll()
+        if (chunk == null) {
+            writePendingIfIdle()
+            return
+        }
         writing = true
-        c.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
-        c.value = chunk
-        g.writeCharacteristic(c)
+        val epoch = writeEpoch
+        try {
+            val queued = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeCharacteristic(c, chunk, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE) ==
+                    BluetoothGatt.GATT_SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                c.writeType = BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+                @Suppress("DEPRECATION")
+                c.value = chunk
+                @Suppress("DEPRECATION")
+                g.writeCharacteristic(c)
+            }
+            if (!queued) {
+                writing = false
+                return
+            }
+            mainHandler.postDelayed({
+                if (writing && epoch == writeEpoch) {
+                    completeWrite()
+                }
+            }, 20)
+        } catch (_: SecurityException) {
+            writing = false
+        }
     }
 
     private fun startWatchdog() {
@@ -331,11 +763,12 @@ class RobotBlePlugin : Plugin() {
             override fun run() {
                 try {
                     val now = System.currentTimeMillis()
-                    val connected = gatt != null && txChar != null
-                    if (connected) {
+                    val linkReady = gatt != null && txChar != null
+                    if (linkReady) {
                         val delta = now - lastSendMs
                         if (delta > watchdogTimeoutMs) {
-                            enqueuePayload(buildNeutralFrame(estop = estopEnabled))
+                            pendingPayload = buildNeutralFrame(estop = estopEnabled)
+                            writePendingIfIdle()
                         }
                     }
                 } finally {
@@ -361,4 +794,3 @@ class RobotBlePlugin : Plugin() {
         return o.toString()
     }
 }
-

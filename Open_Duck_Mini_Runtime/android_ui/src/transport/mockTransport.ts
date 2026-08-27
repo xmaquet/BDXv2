@@ -4,6 +4,7 @@ import type { Transport, TransportListener } from './transport';
 export class MockTransport implements Transport {
   private status: TransportStatus = { connected: false, mode: 'simulation' };
   private listener: TransportListener | null = null;
+  private lastEchoMs = 0;
 
   getStatus(): TransportStatus {
     return this.status;
@@ -26,9 +27,19 @@ export class MockTransport implements Transport {
   }
 
   async send(frame: ControllerFrameV1): Promise<void> {
-    // Throttle & perf: ne rien faire par défaut, juste debug ponctuel si besoin.
-    // eslint-disable-next-line no-console
-    console.debug('[MockTransport] frame', frame);
+    const now = Date.now();
+    if (now - this.lastEchoMs < 1000) return;
+    this.lastEchoMs = now;
+    const text = JSON.stringify({
+      type: 'log',
+      level: 'info',
+      message: `TX reçu seq=${frame.seq} estop=${frame.safety.estop} (simulation)`,
+    });
+    this.listener?.({ type: 'rx', text });
+    this.listener?.({
+      type: 'log',
+      log: { type: 'log', level: 'info', message: `TX reçu seq=${frame.seq} estop=${frame.safety.estop} (simulation)` },
+    });
   }
 }
 

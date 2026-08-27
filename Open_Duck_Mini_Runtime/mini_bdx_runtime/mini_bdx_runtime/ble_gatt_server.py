@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import json
 import sys
+import time
 from typing import Any
 
 # UUID alignés sur RobotBlePlugin.kt et docs/protocol.md
@@ -94,7 +95,7 @@ def main() -> None:
         def __init__(self, v: VirtualJoystickState) -> None:
             self.virtual = v
             self._tx_buf = bytearray()
-            self._rx_value = b'{"type":"log","level":"info","message":"GATT TX ready"}'
+            self._rx_value = b'{"type":"log","level":"info","message":"idle"}'
             super().__init__(SERVICE_UUID, True)
 
         @characteristic(
@@ -124,9 +125,25 @@ def main() -> None:
         def rx_characteristic(self, options):  # noqa: ARG002
             return bytes(self._rx_value)
 
+        def _prepare_rx(self) -> None:
+            """Prépare un JSON type log. changed() est appelé depuis la boucle asyncio (même thread que register)."""
+            snap = self.virtual.copy_locked()
+            if snap.ts_ms == 0 and snap.seq == 0:
+                message = "idle"
+            else:
+                message = f"seq={snap.seq}"
+            self._rx_value = json.dumps(
+                {
+                    "type": "log",
+                    "level": "info",
+                    "ts_ms": int(time.time() * 1000),
+                    "message": message,
+                },
+                separators=(",", ":"),
+            ).encode("utf-8")
+
         def notify_json(self, obj: dict) -> None:
             self._rx_value = json.dumps(obj, separators=(",", ":")).encode("utf-8")
-            self.rx_characteristic.changed(self._rx_value)
 
     async def run() -> None:
         bus = await get_message_bus()
@@ -191,13 +208,7 @@ def main() -> None:
             "[ble_gatt] Publicité + service enregistrés. Connecte la tablette (scan filtré sur ce service UUID).",
             flush=True,
         )
-        srv.notify_json(
-            {
-                "type": "log",
-                "level": "info",
-                "message": "Connecté au serveur GATT Pi (TX/RX prêts).",
-            }
-        )
+        srv._prepare_rx()
 
         if args.dump:
 
@@ -208,6 +219,22 @@ def main() -> None:
                     await asyncio.sleep(0.1)
 
             asyncio.create_task(_dump())
+
+        async def _echo_loop() -> None:
+            while True:
+                await asyncio.sleep(1.0)
+                srv._prepare_rx()
+                try:
+                    srv.rx_characteristic.changed(srv._rx_value)
+                    if args.dump:
+                        print(f"[ble_gatt] notify {len(srv._rx_value)} B", flush=True)
+                except Exception as e:
+                    print(
+                        f"[ble_gatt] notify RX ignoré ({e}) len={len(srv._rx_value)}",
+                        file=sys.stderr,
+                    )
+
+        asyncio.create_task(_echo_loop())
 
         try:
             while True:

@@ -51,6 +51,7 @@ export class AndroidBleTransport implements Transport {
         const rxSub = await RobotBle.addListener('rx', (ev: any) => {
           const text = typeof ev?.text === 'string' ? ev.text : '';
           if (!text) return;
+          this.listener?.({ type: 'rx', text });
           try {
             const msg = JSON.parse(text);
             if (msg?.type === 'log' && typeof msg.message === 'string') {

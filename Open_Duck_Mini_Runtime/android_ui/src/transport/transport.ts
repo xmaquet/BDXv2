@@ -2,7 +2,8 @@ import type { ControllerFrameV1, RobotLogMessage, TransportStatus } from './type
 
 export type TransportEvent =
   | { type: 'status'; status: TransportStatus }
-  | { type: 'log'; log: RobotLogMessage };
+  | { type: 'log'; log: RobotLogMessage }
+  | { type: 'rx'; text: string };
 
 export type TransportListener = (event: TransportEvent) => void;
 
