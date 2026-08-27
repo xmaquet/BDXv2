@@ -61,6 +61,19 @@ class Eyes:
         self._set_eyes(False)
         self.steady_on = False
 
+    def blink_times(self, count=3, closed_s=0.12, open_s=0.35):
+        """Clignements discrets (pas le thread aléatoire). Finit éteint."""
+        self.stop_blink()
+        self._set_eyes(True)
+        self.steady_on = True
+        time.sleep(0.2)
+        for _ in range(count):
+            self._set_eyes(False)
+            time.sleep(closed_s)
+            self._set_eyes(True)
+            time.sleep(open_s)
+        self.set_off()
+
     def run(self):
         try:
             while not self._stop_event.is_set():

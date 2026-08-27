@@ -123,15 +123,46 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 - **`--freq`** : fréquence de la boucle `AndroidBridgeController` (Hz).
 - **`--head-only`** : `only_head_control` côté pont.
 - **`--no-agent`** : ne pas enregistrer `NoIoAgent` (pairing déjà géré ou souci de permissions).
+- **`--no-hello`** : ne pas jouer la séquence de démarrage.
 - **`--dbus-adapter PATH`** : chemin D-Bus explicite de l’adaptateur (ex. `/org/bluez/hci0`).
 
-## Messages hors ControllerFrame (réservés)
+Au lancement de `bdx-ble-robot` (sauf `--no-hello`) : 3 clignements des yeux, 4 oscillations d’antennes, puis `happy1.wav`. Ce n’est pas un `ControllerFrame` ni un test tablette. Pour Linux `@reboot` / systemd : plus tard, quand le GATT sera autostarté.
 
-Ces canaux **ne sont pas** des champs de `ControllerFrame`. Aucun envoi depuis l’UI tant que le schéma n’est pas adopté ici.
+## Messages hors ControllerFrame
+
+Ces canaux **ne sont pas** des champs de `ControllerFrame`.
 
 ### Arrêt système (D-021)
 
-Message **dédié** (halt Linux / `poweroff`). **Pas** `safety.estop`, **pas** un bouton Xbox. Schéma JSON : **pas encore figé**.
+Message **dédié** (halt Linux / `poweroff`). **Pas** `safety.estop`, **pas** un bouton Xbox, **pas** `type: test`.
+
+```json
+{ "type": "halt", "v": 1, "confirm": true }
+```
+
+Règles :
+
+- `confirm` **doit** être le booléen JSON `true`. Toute autre valeur → refus, **pas** d’arrêt.
+- Effet : `poweroff` (rangement). **Pas** de reboot.
+- L’UI n’envoie ce message qu’après une confirmation explicite (case à cocher).
+
+Réponse RX :
+
+```json
+{ "type": "halt_ack", "v": 1, "accepted": true, "message": "Arrêt demandé" }
+```
+
+`accepted: false` : pas d’arrêt (confirmation manquante, `sudo` refusé, etc.). Après `accepted: true`, le BLE tombe ; l’UI affiche **robot éteint**, pas une erreur de connexion.
+
+Limite physique : l’arrêt OS **ne coupe pas** la batterie. Attendre que le Pi soit mort, **puis** couper l’alimentation.
+
+Droits Pi : l’utilisateur `bdxv2` doit pouvoir `sudo -n /sbin/poweroff` (ou `/usr/sbin/poweroff`). Une fois, hors `pi-setup/install.sh` (D-020) :
+
+```bash
+bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_halt_sudo.sh
+```
+
+Filet : SSH `sudo poweroff`. À intégrer plus tard dans l’install complète (D-012).
 
 ### Tests accessoires (D-018)
 

@@ -15,6 +15,7 @@ import argparse
 import asyncio
 import json
 import sys
+import threading
 import time
 from typing import Any
 
@@ -24,7 +25,9 @@ TX_UUID = "12345678-1234-5678-1234-56789abcdef1"  # Android → robot (write)
 RX_UUID = "12345678-1234-5678-1234-56789abcdef2"  # robot → Android (notify / read)
 
 
-def _try_apply_json_frames(buf: bytearray, virtual: Any, tests: Any = None) -> None:
+def _try_apply_json_frames(
+    buf: bytearray, virtual: Any, tests: Any = None, halt: Any = None
+) -> None:
     """Décode UTF-8, extrait un ou plusieurs objets JSON (raw_decode)."""
     if not buf:
         return
@@ -44,7 +47,10 @@ def _try_apply_json_frames(buf: bytearray, virtual: Any, tests: Any = None) -> N
             buf.extend(tail)
             return
         if isinstance(obj, dict):
-            if obj.get("type") == "test" and tests is not None:
+            if obj.get("type") == "halt" and halt is not None:
+                ack = halt.request(obj)
+                print(f"[ble_gatt] halt → {ack.get('message')}", flush=True)
+            elif obj.get("type") == "test" and tests is not None:
                 action = str(obj.get("action", ""))
                 sound = obj.get("sound")
                 result = tests.dispatch(action, sound=None if sound is None else str(sound))
@@ -83,6 +89,7 @@ def main() -> None:
     ap.add_argument("--freq", type=float, default=20.0, help="Hz pour AndroidBridgeController")
     ap.add_argument("--head-only", action="store_true", help="only_head_control")
     ap.add_argument("--dump", action="store_true", help="Afficher get_last_command() périodiquement")
+    ap.add_argument("--no-hello", action="store_true", help="Ne pas jouer la séquence de démarrage (yeux / antennes / happy1)")
     ap.add_argument("--no-agent", action="store_true", help="Ne pas enregistrer NoIoAgent (si pairing déjà géré)")
     ap.add_argument(
         "--dbus-adapter",
@@ -94,16 +101,19 @@ def main() -> None:
 
     from mini_bdx_runtime.xbox_bridge import AndroidBridgeController, VirtualJoystickState
     from mini_bdx_runtime.ble_test_actions import AccessoryTests
+    from mini_bdx_runtime.ble_halt import SystemHalt
 
     shared_virtual = VirtualJoystickState()
     shared_tests = AccessoryTests()
+    shared_halt = SystemHalt()
 
     class RobotDuckGattService(Service):
         """Service unique : TX (write JSON), RX (notify + read)."""
 
-        def __init__(self, v: VirtualJoystickState, tests: AccessoryTests) -> None:
+        def __init__(self, v: VirtualJoystickState, tests: AccessoryTests, halt: SystemHalt) -> None:
             self.virtual = v
             self.tests = tests
+            self.halt = halt
             self._tx_buf = bytearray()
             self._rx_value = b'{"type":"log","level":"info","message":"idle"}'
             super().__init__(SERVICE_UUID, True)
@@ -129,21 +139,23 @@ def main() -> None:
             if len(self._tx_buf) > 65536:
                 self._tx_buf.clear()
                 return
-            _try_apply_json_frames(self._tx_buf, self.virtual, self.tests)
+            _try_apply_json_frames(self._tx_buf, self.virtual, self.tests, self.halt)
 
         @characteristic(RX_UUID, CharFlags.NOTIFY | CharFlags.READ)
         def rx_characteristic(self, options):  # noqa: ARG002
             return bytes(self._rx_value)
 
         def _prepare_rx(self) -> None:
-            state = getattr(self.tests, "last_state", None)
-            if state:
-                self.tests.last_state = None
-                self.tests.last_result = ""
-                payload = dict(state)
-                payload.setdefault("ts_ms", int(time.time() * 1000))
-                self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-                return
+            for src in (self.halt, self.tests):
+                state = getattr(src, "last_state", None)
+                if state:
+                    src.last_state = None
+                    if src is self.tests:
+                        self.tests.last_result = ""
+                    payload = dict(state)
+                    payload.setdefault("ts_ms", int(time.time() * 1000))
+                    self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+                    return
             result = getattr(self.tests, "last_result", "") or ""
             if result:
                 self.tests.last_result = ""
@@ -200,7 +212,7 @@ def main() -> None:
         except Exception as e:
             print(f"[ble_gatt] Impossible d’allumer l’adaptateur ({e}).", file=sys.stderr)
 
-        srv = RobotDuckGattService(shared_virtual, shared_tests)
+        srv = RobotDuckGattService(shared_virtual, shared_tests, shared_halt)
         await srv.register(bus, adapter=adapter)
 
         if not args.no_agent:
@@ -231,6 +243,11 @@ def main() -> None:
             flush=True,
         )
         srv._prepare_rx()
+
+        if not args.no_hello:
+            from mini_bdx_runtime.boot_hello import run_boot_hello
+
+            threading.Thread(target=run_boot_hello, name="boot_hello", daemon=True).start()
 
         if args.dump:
 

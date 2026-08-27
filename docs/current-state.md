@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-27 (D-022 UI native).
+Dernière mise à jour : 2026-08-27 (D-021 halt).
 
 ## Situation du projet
 
@@ -35,9 +35,9 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 **D-022 :** surface produit = **UI Android native** (accueil à menus). WebView Capacitor / proto Figma **abandonnés** comme UI. `android_ui/` gelé.
 
-**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018).
+**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** à chaque lancement de `bdx-ble-robot` (yeux ×3, antennes ×4, `happy1`).
 
-**Pas encore :** Tests actionnables, halt envoyé (D-021 : contrat JSON à figer dans `protocol.md`), vidéo.
+**Pas encore :** vidéo (D-022, hors BLE).
 
 ## Contenu du workspace
 
@@ -53,7 +53,7 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 1. OS neuf + SSH — **fait**.
 2. Script d’install (`pi-setup/`) — **écrit** ; exécution Pi **reportée** (D-020).
-3. App Android BLE native (D-022) : accueil à menus **fait** ; **Tests** actionnables + halt envoyé (D-021, contrat `protocol.md`) — **prochaine étape**.
+3. App Android BLE native (D-022) : accueil à menus **fait** ; **Tests** actionnables **fait** ; halt envoyé (D-021) **codé** (à valider sur robot : sudoers + poweroff).
 4. Commandes « normales » (dont expressions pendant la marche), **sans** manette Xbox.
 
 ## Classification

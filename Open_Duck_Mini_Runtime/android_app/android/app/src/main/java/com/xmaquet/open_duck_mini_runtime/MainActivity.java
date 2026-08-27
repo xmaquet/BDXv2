@@ -57,6 +57,10 @@ public class MainActivity extends BridgeActivity {
   private TextView statusView;
   private TextView rxLine;
   private TextView testsHint;
+  private TextView shutdownResult;
+  private Button shutdownSend;
+  private CheckBox shutdownConfirm;
+  private boolean expectingHalt;
   private Button testEyesSteady;
   private Button testEyesBlink;
   private Button testProjector;
@@ -188,6 +192,8 @@ public class MainActivity extends BridgeActivity {
     view.findViewById(R.id.home_tests).setOnClickListener(v -> showScreen(Screen.TESTS));
     view.findViewById(R.id.home_shutdown).setOnClickListener(v -> showScreen(Screen.SHUTDOWN));
     view.findViewById(R.id.home_video).setOnClickListener(v -> showScreen(Screen.VIDEO));
+    TextView version = view.findViewById(R.id.home_version);
+    version.setText(BuildConfig.VERSION_NAME);
   }
 
   private void bindPilot() {
@@ -245,15 +251,51 @@ public class MainActivity extends BridgeActivity {
     View view = getLayoutInflater().inflate(R.layout.screen_shutdown, screenContainer, false);
     screenContainer.addView(view);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
-    CheckBox confirm = view.findViewById(R.id.shutdown_confirm);
-    Button send = view.findViewById(R.id.shutdown_send);
-    TextView result = view.findViewById(R.id.shutdown_result);
-    send.setEnabled(false);
-    confirm.setOnCheckedChangeListener((box, checked) -> send.setEnabled(checked));
-    send.setOnClickListener(
-        v ->
-            result.setText(
-                "Rien n’a été envoyé. Le message d’arrêt n’est pas encore figé dans protocol.md. Filet : SSH sudo poweroff."));
+    shutdownConfirm = view.findViewById(R.id.shutdown_confirm);
+    shutdownSend = view.findViewById(R.id.shutdown_send);
+    shutdownResult = view.findViewById(R.id.shutdown_result);
+    shutdownSend.setEnabled(false);
+    shutdownConfirm.setOnCheckedChangeListener(
+        (box, checked) -> shutdownSend.setEnabled(checked && !expectingHalt));
+    shutdownSend.setOnClickListener(v -> sendHalt());
+    if (expectingHalt) {
+      shutdownSend.setEnabled(false);
+      shutdownResult.setText("Arrêt demandé — le lien BLE va tomber. Attendre que le Pi soit mort, puis couper l’alimentation.");
+    }
+  }
+
+  private void sendHalt() {
+    if (shutdownConfirm == null || !shutdownConfirm.isChecked()) {
+      if (shutdownResult != null) {
+        shutdownResult.setText("Coche d’abord la confirmation.");
+      }
+      return;
+    }
+    if (ble == null || !connected || !ble.isLinkReady()) {
+      if (shutdownResult != null) {
+        shutdownResult.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
+      }
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject();
+      o.put("type", "halt");
+      o.put("v", 1);
+      o.put("confirm", true);
+      ble.sendNative(o.toString());
+      expectingHalt = true;
+      shutdownSend.setEnabled(false);
+      if (shutdownResult != null) {
+        shutdownResult.setText(
+            "Arrêt demandé — le lien BLE va tomber. Attendre que le Pi soit mort, puis couper l’alimentation.");
+      }
+      refreshBleBanner();
+    } catch (Exception e) {
+      expectingHalt = false;
+      if (shutdownResult != null) {
+        shutdownResult.setText("Envoi impossible");
+      }
+    }
   }
 
   private void sendTest(String action) {
@@ -428,6 +470,9 @@ public class MainActivity extends BridgeActivity {
     statusView = null;
     rxLine = null;
     testsHint = null;
+    shutdownResult = null;
+    shutdownSend = null;
+    shutdownConfirm = null;
     testEyesSteady = null;
     testEyesBlink = null;
     testProjector = null;
@@ -466,6 +511,11 @@ public class MainActivity extends BridgeActivity {
       bleDot.setBackgroundResource(R.drawable.ble_dot_on);
       bleBannerText.setText("BLE CONNECTÉ");
       bleBannerConnect.setText("Couper");
+    } else if (expectingHalt) {
+      bleBanner.setBackgroundResource(R.drawable.ble_banner_off);
+      bleDot.setBackgroundResource(R.drawable.ble_dot_off);
+      bleBannerText.setText("ROBOT ÉTEINT");
+      bleBannerConnect.setText("Connecter");
     } else {
       bleBanner.setBackgroundResource(R.drawable.ble_banner_error);
       bleDot.setBackgroundResource(R.drawable.ble_dot_off);
@@ -490,6 +540,7 @@ public class MainActivity extends BridgeActivity {
       return;
     }
     connecting = true;
+    expectingHalt = false;
     refreshBleBanner();
     ble.connectNative(
         name ->
@@ -555,6 +606,26 @@ public class MainActivity extends BridgeActivity {
     try {
       JSONObject o = new JSONObject(text);
       String type = o.optString("type");
+      if ("halt_ack".equals(type)) {
+        boolean accepted = o.optBoolean("accepted");
+        expectingHalt = accepted;
+        if (shutdownResult != null) {
+          String message = o.optString("message");
+          if (accepted) {
+            shutdownResult.setText(
+                (message.isEmpty() ? "Arrêt demandé" : message)
+                    + " Attendre que le Pi soit mort, puis couper l’alimentation.");
+          } else {
+            shutdownResult.setText(
+                message.isEmpty() ? "Arrêt refusé" : message);
+            if (shutdownSend != null && shutdownConfirm != null) {
+              shutdownSend.setEnabled(shutdownConfirm.isChecked());
+            }
+          }
+        }
+        refreshBleBanner();
+        return;
+      }
       if ("test_catalog".equals(type)) {
         JSONArray arr = o.optJSONArray("sounds");
         if (arr != null && arr.length() > 0) {

@@ -38,7 +38,7 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ## Lot 3 — App Android BLE + sous-menu Tests
 
-**Statut :** lot **3a** (dump TX/RX BLE) **tenu** sur tablette native (2026-08-27). **D-022 :** UI produit = native ; accueil à menus. Tests actionnables et halt **pas encore envoyés** (contrat `protocol.md` à figer). Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**, **D-021**, **D-022**.
+**Statut :** lot **3a** (dump TX/RX BLE) **tenu** ; **Tests** actionnables **tenus** (2026-08-27). **Halt (D-021)** : contrat figé + envoi UI + `poweroff` Pi **codés** — validation robot restante (sudoers une fois, puis arrêt réel). **D-022 :** UI produit = native. Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**, **D-021**, **D-022**.
 
 **Objectif :** APK connectée en BLE au Pi ; commandes dans les deux sens ; **sous-menu Tests** (yeux, projecteur, HP, antennes) **indépendant de la marche**. Pas de surface Xbox. **Arrêt système** depuis l’UI (D-021), hors Tests, avec confirmation.
 
@@ -62,4 +62,4 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ---
 
-**Prochaine étape recommandée :** lot 3 (app Android BLE), **pas** le lot 2 sur le Pi (D-020).
+**Prochaine étape recommandée :** valider halt sur le robot (script sudoers + arrêt réel), **pas** le lot 2 sur le Pi (D-020).

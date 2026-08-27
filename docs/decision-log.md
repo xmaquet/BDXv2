@@ -107,6 +107,8 @@ Le **live tablette d’abord**. Les séquences suivent, dans la même phase prod
 
 **Précision D-010 :** le live se matérialise d’abord par le **mode test** (fonctions une à une). Les « séquences » ne sont pas le mode normal : le mode normal = expressions **pendant** la marche, comme les scripts d’origine.
 
+**Avancement (2026-08-27) :** première séquence = **hello au démarrage** de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`). Contournement : `--no-hello`.
+
 ---
 
 ## D-009 — Monorepo : copie, un seul Git
@@ -292,6 +294,8 @@ L’app de commande doit permettre d’**éteindre le Raspberry Pi proprement**,
 **Après halt :** le BLE tombe. L’UI affiche un état « robot éteint », pas une pluie d’erreurs de connexion.
 
 **Filet :** SSH `sudo poweroff` reste valable tant que l’app ne le fait pas, et ensuite comme secours.
+
+**Contrat (2026-08-27) :** figé dans `Open_Duck_Mini_Runtime/docs/protocol.md` — `{ "type": "halt", "v": 1, "confirm": true }`. Réponse `{ "type": "halt_ack", ... }`. Droit sudo Pi : `scripts/enable_halt_sudo.sh` (hors `pi-setup/install.sh`, à intégrer plus tard D-012).
 
 **Séquence de lot :** ne pas en faire le premier dump TX/RX ; **réserver le contrat** dès qu’on touche au protocole.
 

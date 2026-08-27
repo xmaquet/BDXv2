@@ -57,7 +57,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Rien n’est envoyé : schéma d’arrêt pas encore figé dans protocol.md."
+        android:text="Coche la confirmation, puis éteindre. Filet SSH : sudo poweroff."
         android:textColor="@color/bs_muted"
         android:textSize="13sp" />
 </LinearLayout>
