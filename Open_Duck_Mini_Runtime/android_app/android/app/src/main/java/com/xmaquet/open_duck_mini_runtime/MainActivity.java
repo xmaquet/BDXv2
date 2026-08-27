@@ -14,7 +14,9 @@ import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.TextView;
+import org.json.JSONArray;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
@@ -39,10 +41,33 @@ public class MainActivity extends BridgeActivity {
   private TextView bleBannerText;
   private Button bleBannerConnect;
 
+  private static final String[] FALLBACK_SOUNDS = {
+    "beep1.wav",
+    "beep2.wav",
+    "happy1.wav",
+    "happy2.wav",
+    "happy3.wav",
+    "lamp.wav",
+    "lamp2.wav",
+    "lamp3.wav",
+    "motor.wav"
+  };
+
   private RobotBlePlugin ble;
   private TextView statusView;
   private TextView rxLine;
   private TextView testsHint;
+  private Button testEyesSteady;
+  private Button testEyesBlink;
+  private Button testProjector;
+  private Button testAntWiggle;
+  private Button testAntPulse;
+  private GridLayout testSounds;
+  private boolean eyesSteadyOn;
+  private boolean eyesBlinkOn;
+  private boolean projectorOn;
+  private String lastSound = "";
+  private int testsGen;
 
   private VirtualStickView stickLeft;
   private VirtualStickView stickRight;
@@ -187,16 +212,27 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void bindTests() {
+    testsGen++;
     View view = getLayoutInflater().inflate(R.layout.screen_tests, screenContainer, false);
     screenContainer.addView(view);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     testsHint = view.findViewById(R.id.tests_hint);
-    view.findViewById(R.id.test_eyes_steady).setOnClickListener(v -> sendTest("eyes_steady"));
-    view.findViewById(R.id.test_eyes_blink).setOnClickListener(v -> sendTest("eyes_blink"));
-    view.findViewById(R.id.test_projector).setOnClickListener(v -> sendTest("projector"));
-    view.findViewById(R.id.test_speaker).setOnClickListener(v -> sendTest("speaker"));
-    view.findViewById(R.id.test_antennas_wiggle).setOnClickListener(v -> sendTest("antennas_wiggle"));
-    view.findViewById(R.id.test_antennas_pulse).setOnClickListener(v -> sendTest("antennas_pulse"));
+    testEyesSteady = view.findViewById(R.id.test_eyes_steady);
+    testEyesBlink = view.findViewById(R.id.test_eyes_blink);
+    testProjector = view.findViewById(R.id.test_projector);
+    testAntWiggle = view.findViewById(R.id.test_antennas_wiggle);
+    testAntPulse = view.findViewById(R.id.test_antennas_pulse);
+    testSounds = view.findViewById(R.id.test_sounds);
+    testEyesSteady.setOnClickListener(v -> sendTest("eyes_steady"));
+    testEyesBlink.setOnClickListener(v -> sendTest("eyes_blink"));
+    testProjector.setOnClickListener(v -> sendTest("projector"));
+    testAntWiggle.setOnClickListener(v -> sendTest("antennas_wiggle"));
+    testAntPulse.setOnClickListener(v -> sendTest("antennas_pulse"));
+    populateSounds(FALLBACK_SOUNDS);
+    paintTestControls();
+    if (connected) {
+      sendTest("list_sounds");
+    }
   }
 
   private void bindSimple(int layout) {
@@ -221,6 +257,10 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void sendTest(String action) {
+    sendTest(action, null);
+  }
+
+  private void sendTest(String action, String sound) {
     if (ble == null || !connected || !ble.isLinkReady()) {
       if (testsHint != null) {
         testsHint.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
@@ -232,14 +272,133 @@ public class MainActivity extends BridgeActivity {
       o.put("type", "test");
       o.put("v", 1);
       o.put("action", action);
+      if (sound != null && !sound.isEmpty()) {
+        o.put("sound", sound);
+      }
       ble.sendNative(o.toString());
+      markTestSent(action, sound);
       if (testsHint != null) {
-        testsHint.setText("Envoyé : " + action);
+        if (sound != null) {
+          testsHint.setText("Lecture : " + soundLabel(sound));
+        } else if (!"list_sounds".equals(action)) {
+          testsHint.setText("Envoyé : " + action);
+        }
       }
     } catch (Exception e) {
       if (testsHint != null) {
         testsHint.setText("Envoi impossible");
       }
+    }
+  }
+
+  private void markTestSent(String action, String sound) {
+    if ("eyes_steady".equals(action)) {
+      eyesSteadyOn = !eyesSteadyOn;
+      if (eyesSteadyOn) {
+        eyesBlinkOn = false;
+      }
+    } else if ("eyes_blink".equals(action)) {
+      eyesBlinkOn = !eyesBlinkOn;
+      if (eyesBlinkOn) {
+        eyesSteadyOn = false;
+      }
+    } else if ("projector".equals(action)) {
+      projectorOn = !projectorOn;
+    } else if ("speaker".equals(action) && sound != null) {
+      lastSound = sound;
+    } else if ("antennas_wiggle".equals(action) || "antennas_pulse".equals(action)) {
+      paintAntenna(action, true);
+      int gen = testsGen;
+      txHandler.postDelayed(
+          () -> {
+            if (gen == testsGen && current == Screen.TESTS) {
+              paintAntenna(action, false);
+            }
+          },
+          2000);
+      return;
+    }
+    paintTestControls();
+  }
+
+  private void populateSounds(String[] names) {
+    if (testSounds == null) {
+      return;
+    }
+    testSounds.removeAllViews();
+    int pad = (int) (4 * getResources().getDisplayMetrics().density);
+    for (String name : names) {
+      if (name == null || name.isEmpty()) {
+        continue;
+      }
+      Button b = new Button(this, null, 0, R.style.Bdx_Btn);
+      b.setAllCaps(false);
+      b.setText(soundLabel(name));
+      b.setTag(name);
+      b.setMinHeight((int) (48 * getResources().getDisplayMetrics().density));
+      GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+      lp.width = 0;
+      lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+      lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+      lp.setMargins(pad, pad, pad, pad);
+      b.setLayoutParams(lp);
+      b.setOnClickListener(v -> sendTest("speaker", String.valueOf(v.getTag())));
+      testSounds.addView(b);
+    }
+    paintSoundButtons();
+  }
+
+  private static String soundLabel(String name) {
+    if (name.endsWith(".wav")) {
+      return name.substring(0, name.length() - 4);
+    }
+    return name;
+  }
+
+  private void paintTestControls() {
+    paintControl(testEyesSteady, eyesSteadyOn, R.drawable.btn_flat_blue);
+    paintControl(testEyesBlink, eyesBlinkOn, R.drawable.btn_flat_blue);
+    paintControl(testProjector, projectorOn, R.drawable.btn_flat_teal);
+    paintSoundButtons();
+  }
+
+  private void paintAntenna(String action, boolean on) {
+    if ("antennas_wiggle".equals(action)) {
+      paintControl(testAntWiggle, on, R.drawable.btn_flat_gray);
+      if (on) {
+        paintControl(testAntPulse, false, R.drawable.btn_flat_gray);
+      }
+    } else if ("antennas_pulse".equals(action)) {
+      paintControl(testAntPulse, on, R.drawable.btn_flat_gray);
+      if (on) {
+        paintControl(testAntWiggle, false, R.drawable.btn_flat_gray);
+      }
+    }
+  }
+
+  private void paintSoundButtons() {
+    if (testSounds == null) {
+      return;
+    }
+    for (int i = 0; i < testSounds.getChildCount(); i++) {
+      View child = testSounds.getChildAt(i);
+      if (child instanceof Button) {
+        boolean on = lastSound.equals(child.getTag());
+        paintControl((Button) child, on, R.drawable.btn_flat_green);
+      }
+    }
+  }
+
+  private void paintControl(Button button, boolean active, int idleBg) {
+    if (button == null) {
+      return;
+    }
+    if (active) {
+      button.setBackgroundResource(R.drawable.btn_flat_yellow);
+      button.setTextColor(ContextCompat.getColor(this, R.color.bs_dark));
+    } else {
+      button.setBackgroundResource(idleBg);
+      button.setTextColor(ContextCompat.getColor(this, R.color.bs_light));
     }
   }
 
@@ -269,6 +428,12 @@ public class MainActivity extends BridgeActivity {
     statusView = null;
     rxLine = null;
     testsHint = null;
+    testEyesSteady = null;
+    testEyesBlink = null;
+    testProjector = null;
+    testAntWiggle = null;
+    testAntPulse = null;
+    testSounds = null;
     stickLeft = null;
     stickRight = null;
     pause = false;
@@ -334,6 +499,9 @@ public class MainActivity extends BridgeActivity {
                   connected = true;
                   refreshBleBanner();
                   refreshPilotStatus();
+                  if (current == Screen.TESTS) {
+                    sendTest("list_sounds");
+                  }
                 }),
         err ->
             runOnUiThread(
@@ -376,14 +544,84 @@ public class MainActivity extends BridgeActivity {
           if (rxLine != null) {
             rxLine.setText(text);
           }
-          if (testsHint != null
-              && (text.contains("Yeux")
-                  || text.contains("Projecteur")
-                  || text.contains("Haut-parleur")
-                  || text.contains("Antennes"))) {
-            testsHint.setText(text);
-          }
+          applyTestRx(text);
         });
+  }
+
+  private void applyTestRx(String text) {
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject(text);
+      String type = o.optString("type");
+      if ("test_catalog".equals(type)) {
+        JSONArray arr = o.optJSONArray("sounds");
+        if (arr != null && arr.length() > 0) {
+          String[] names = new String[arr.length()];
+          for (int i = 0; i < arr.length(); i++) {
+            names[i] = arr.optString(i);
+          }
+          populateSounds(names);
+        }
+        if (testsHint != null) {
+          int n = arr == null ? 0 : arr.length();
+          testsHint.setText(n > 0 ? n + " sons disponibles" : "Aucun son sur le robot");
+        }
+        return;
+      }
+      if ("test_state".equals(type)) {
+        String action = o.optString("action");
+        boolean active = o.optBoolean("active");
+        if ("eyes_steady".equals(action)) {
+          eyesSteadyOn = active;
+          if (active) {
+            eyesBlinkOn = false;
+          }
+        } else if ("eyes_blink".equals(action)) {
+          eyesBlinkOn = active;
+          if (active) {
+            eyesSteadyOn = false;
+          }
+        } else if ("projector".equals(action)) {
+          projectorOn = active;
+        } else if ("speaker".equals(action)) {
+          String sound = o.optString("sound");
+          if (!sound.isEmpty()) {
+            lastSound = sound;
+          }
+        } else if ("antennas_wiggle".equals(action) || "antennas_pulse".equals(action)) {
+          paintAntenna(action, active);
+        }
+        paintTestControls();
+        if (testsHint != null) {
+          String message = o.optString("message");
+          if (!message.isEmpty()) {
+            testsHint.setText(message);
+          }
+        }
+        return;
+      }
+      if ("log".equals(type) && testsHint != null) {
+        String message = o.optString("message");
+        if (!message.isEmpty()
+            && (message.contains("Yeux")
+                || message.contains("Projecteur")
+                || message.contains("Haut-parleur")
+                || message.contains("Antennes")
+                || message.contains("son"))) {
+          testsHint.setText(message);
+        }
+      }
+    } catch (Exception ignored) {
+      if (testsHint != null
+          && (text.contains("Yeux")
+              || text.contains("Projecteur")
+              || text.contains("Haut-parleur")
+              || text.contains("Antennes"))) {
+        testsHint.setText(text);
+      }
+    }
   }
 
   private boolean hasBlePermissions() {

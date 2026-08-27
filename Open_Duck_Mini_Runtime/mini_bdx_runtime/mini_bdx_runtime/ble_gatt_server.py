@@ -46,7 +46,8 @@ def _try_apply_json_frames(buf: bytearray, virtual: Any, tests: Any = None) -> N
         if isinstance(obj, dict):
             if obj.get("type") == "test" and tests is not None:
                 action = str(obj.get("action", ""))
-                result = tests.dispatch(action)
+                sound = obj.get("sound")
+                result = tests.dispatch(action, sound=None if sound is None else str(sound))
                 tests.last_result = result
                 print(f"[ble_gatt] test {action} → {result}", flush=True)
             elif int(obj.get("v", 0)) == 1 and "axes" in obj:
@@ -135,6 +136,14 @@ def main() -> None:
             return bytes(self._rx_value)
 
         def _prepare_rx(self) -> None:
+            state = getattr(self.tests, "last_state", None)
+            if state:
+                self.tests.last_state = None
+                self.tests.last_result = ""
+                payload = dict(state)
+                payload.setdefault("ts_ms", int(time.time() * 1000))
+                self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+                return
             result = getattr(self.tests, "last_result", "") or ""
             if result:
                 self.tests.last_result = ""

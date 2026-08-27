@@ -148,11 +148,26 @@ Message **dédié**, **pas** un `ControllerFrame`. Aligné banc SSH (yeux, proje
 | `eyes_steady` | `1` | Yeux fixe ON/OFF |
 | `eyes_blink` | `2` | Clignotement ON/OFF |
 | `projector` | `3` | Projecteur ON/OFF |
-| `speaker` | `4` | Son aléatoire |
+| `speaker` | `4` | Joue **un** WAV nommé (`sound`, ex. `"happy1.wav"`). **Pas** de tirage aléatoire. |
+| `list_sounds` | — | Catalogue des WAV (réponse RX `type: test_catalog`) |
 | `antennas_wiggle` | `5` | Oscillation 2 s |
 | `antennas_pulse` | `6` | Consigne 90° |
 
-Le robot répond sur RX (`type: log`, `message` = résultat).
+Exemple lecture :
+
+```json
+{ "type": "test", "v": 1, "action": "speaker", "sound": "happy1.wav" }
+```
+
+Réponses RX :
+
+```json
+{ "type": "test_state", "v": 1, "action": "eyes_steady", "active": true, "message": "Yeux : ON (fixe)" }
+{ "type": "test_state", "v": 1, "action": "speaker", "active": true, "sound": "happy1.wav", "message": "Haut-parleur : happy1.wav" }
+{ "type": "test_catalog", "v": 1, "sounds": ["beep1.wav", "happy1.wav"] }
+```
+
+Le robot peut aussi renvoyer un `type: log` (`message` = résultat).
 
 ### Vidéo (D-015, D-022)
 

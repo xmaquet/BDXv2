@@ -70,14 +70,23 @@
                 android:background="@drawable/btn_flat_teal"
                 android:text="Projecteur" />
 
-            <Button
-                android:id="@+id/test_speaker"
-                style="@style/Bdx.Btn"
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/btn_flat_green"
-                android:text="Haut-parleur" />
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="6dp"
+                android:text="Haut-parleur"
+                android:textColor="@color/bs_muted"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <GridLayout
+                android:id="@+id/test_sounds"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alignmentMode="alignMargins"
+                android:columnCount="3"
+                android:useDefaultMargins="false" />
 
             <Button
                 android:id="@+id/test_antennas_wiggle"
