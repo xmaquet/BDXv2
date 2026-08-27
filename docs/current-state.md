@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-27 (pi-setup, D-019, D-020).
+Dernière mise à jour : 2026-08-27 (D-022 UI native).
 
 ## Situation du projet
 
@@ -31,9 +31,13 @@ I2S : `dtoverlay=max98357a`. GPIO d’origine inchangés.
 
 Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT SCServo Debug) : offset EEPROM 0, D=0, Lock=1. Zéro robot = **plus tard** (`find_soft_offsets.py`). Pas de test bus complet une fois montés.
 
-## Tablette / BLE (D-015)
+## Tablette / BLE (D-015, D-022)
 
-Chaîne TX existante dans le code ; l’UI actuelle est encore une **manette virtuelle** (héritage). **D-018 :** produit = app BLE + sous-menu **Tests** (pas de Xbox). **Aucun APK construit**, **aucun test BLE**. Audit fait ; lot 3a proposé, pas démarré.
+**D-022 :** surface produit = **UI Android native** (accueil à menus). WebView Capacitor / proto Figma **abandonnés** comme UI. `android_ui/` gelé.
+
+**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018).
+
+**Pas encore :** Tests actionnables, halt envoyé (D-021 : contrat JSON à figer dans `protocol.md`), vidéo.
 
 ## Contenu du workspace
 
@@ -49,7 +53,7 @@ Chaîne TX existante dans le code ; l’UI actuelle est encore une **manette vir
 
 1. OS neuf + SSH — **fait**.
 2. Script d’install (`pi-setup/`) — **écrit** ; exécution Pi **reportée** (D-020).
-3. App Android BLE + sous-menu **Tests** (D-018) — **prochaine étape**.
+3. App Android BLE native (D-022) : accueil à menus **fait** ; **Tests** actionnables + halt envoyé (D-021, contrat `protocol.md`) — **prochaine étape**.
 4. Commandes « normales » (dont expressions pendant la marche), **sans** manette Xbox.
 
 ## Classification
@@ -64,7 +68,7 @@ Chaîne TX existante dans le code ; l’UI actuelle est encore une **manette vir
 
 ### ADAPTER
 
-- UI : app BLE + **sous-menu Tests** (D-018) ; ne pas livrer une manette Xbox.
+- UI : **native** (D-022) ; **Tests** (D-018) ; **Éteindre le robot** (D-021) hors Tests, avec confirmation.
 - RX utile (état / logs).
 - `pi-setup` / install : BLE + audio ; **pas** Xbox `[control]`.
 - Yeux commandables depuis Tests (déjà au banc SSH).
@@ -72,6 +76,7 @@ Chaîne TX existante dans le code ; l’UI actuelle est encore une **manette vir
 ### REMPLACER
 
 - Surface produit manette Xbox : **abandonnée** (D-018) — le fichier héritage reste.
+- Surface produit WebView / proto Figma : **abandonnée** (D-022) — `android_ui/` gelé.
 - Réingénierie large de la stack : **reportée** (D-C).
 
 ### À INVESTIGUER

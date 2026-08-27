@@ -273,6 +273,54 @@ Le banc SSH actuel (D-016) et le venv minimum **restent** le socle de travail ju
 
 ---
 
+## D-021 — Arrêt système depuis l’UI tablette
+
+**Statut :** adoptée (2026-08-27, PO)
+
+L’app de commande doit permettre d’**éteindre le Raspberry Pi proprement**, pour éviter les coupures d’alimentation sauvages (carte SD).
+
+**Ce n’est pas un accessoire** (hors D-007). Ce n’est **pas** une entrée du sous-menu Tests. Ce n’est **pas** `safety.estop` (estop = commande neutre, pas halt Linux).
+
+**UI :** action à part, libellé du type « Éteindre le robot », **confirmation obligatoire** avant envoi.
+
+**Protocole :** message **dédié**, écrit dans `protocol.md` avant implémentation. **Interdit** de le camoufler en bouton Xbox / champ `ControllerFrame`.
+
+**Comportement :** `poweroff` / halt (rangement). **Pas** un reboot comme action par défaut. Un reboot banc pourra venir plus tard.
+
+**Limite physique :** l’arrêt OS **ne coupe pas** la batterie. GPIO / servos peuvent rester dans leur dernier état jusqu’au débranchement. Rituel opérateur : éteindre → attendre que le Pi soit mort → couper l’alim. Couper le couple STS avant halt = raffinement ultérieur.
+
+**Après halt :** le BLE tombe. L’UI affiche un état « robot éteint », pas une pluie d’erreurs de connexion.
+
+**Filet :** SSH `sudo poweroff` reste valable tant que l’app ne le fait pas, et ensuite comme secours.
+
+**Séquence de lot :** ne pas en faire le premier dump TX/RX ; **réserver le contrat** dès qu’on touche au protocole.
+
+---
+
+## D-022 — UI produit native ; WebView / proto Figma abandonnés comme surface
+
+**Statut :** adoptée (2026-08-27, PO)
+
+L’application tablette est une **UI Android native**. La WebView Capacitor (proto Figma / `android_ui` React) **n’est plus** la surface produit. Cause : la WebView ne peignait pas sur le banc ; le lien BLE natif, lui, tient.
+
+**Accueil :** menus **distincts**, pas une manette unique :
+- **Piloter BDXv2** — commande / lien BLE (pas d’UI Xbox, D-018)
+- **Tests** — accessoires D-007, hors marche (D-018)
+- **Éteindre le robot** — D-021, hors Tests, confirmation obligatoire
+- **Vidéo** — plus tard, **hors BLE**
+
+**Vidéo (deux temps, pas maintenant) :**
+1. **Basique** : afficher ce que voit le robot (caméra → tablette).
+2. **Avancé** : interpréter l’image **sur la tablette** (pseudo-mode IA) pour lancer des actions et donner du naturel au bot. Ce n’est **pas** un flux collé sur RX GATT.
+
+**`android_ui/` :** gelé (héritage proto). Ne pas y recoller Tests / halt / vidéo.
+
+**Capacitor :** hôte du plugin BLE uniquement, jusqu’à un éventuel retrait technique. Pas un chantier prioritaire.
+
+**Halt / Tests actionnables :** l’écran d’accueil peut exister **avant** le contrat. Aucun halt ni action Tests n’est envoyé tant que `protocol.md` n’a pas le schéma correspondant (D-021).
+
+---
+
 ## Reporté
 
 - **D-C** — Réingénierie large de la stack : phase ultérieure éventuelle, pas engagée.

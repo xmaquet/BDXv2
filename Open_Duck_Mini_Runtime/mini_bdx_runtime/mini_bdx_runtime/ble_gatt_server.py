@@ -24,8 +24,8 @@ TX_UUID = "12345678-1234-5678-1234-56789abcdef1"  # Android → robot (write)
 RX_UUID = "12345678-1234-5678-1234-56789abcdef2"  # robot → Android (notify / read)
 
 
-def _try_apply_json_frames(buf: bytearray, virtual: Any) -> None:
-    """Décode UTF-8, extrait un ou plusieurs objets JSON (raw_decode), met à jour virtual."""
+def _try_apply_json_frames(buf: bytearray, virtual: Any, tests: Any = None) -> None:
+    """Décode UTF-8, extrait un ou plusieurs objets JSON (raw_decode)."""
     if not buf:
         return
     try:
@@ -43,8 +43,14 @@ def _try_apply_json_frames(buf: bytearray, virtual: Any) -> None:
             buf.clear()
             buf.extend(tail)
             return
-        if isinstance(obj, dict) and int(obj.get("v", 0)) == 1:
-            virtual.apply_json(obj)
+        if isinstance(obj, dict):
+            if obj.get("type") == "test" and tests is not None:
+                action = str(obj.get("action", ""))
+                result = tests.dispatch(action)
+                tests.last_result = result
+                print(f"[ble_gatt] test {action} → {result}", flush=True)
+            elif int(obj.get("v", 0)) == 1 and "axes" in obj:
+                virtual.apply_json(obj)
         idx = end
         while idx < len(text) and text[idx].isspace():
             idx += 1
@@ -86,14 +92,17 @@ def main() -> None:
     args = ap.parse_args()
 
     from mini_bdx_runtime.xbox_bridge import AndroidBridgeController, VirtualJoystickState
+    from mini_bdx_runtime.ble_test_actions import AccessoryTests
 
     shared_virtual = VirtualJoystickState()
+    shared_tests = AccessoryTests()
 
     class RobotDuckGattService(Service):
         """Service unique : TX (write JSON), RX (notify + read)."""
 
-        def __init__(self, v: VirtualJoystickState) -> None:
+        def __init__(self, v: VirtualJoystickState, tests: AccessoryTests) -> None:
             self.virtual = v
+            self.tests = tests
             self._tx_buf = bytearray()
             self._rx_value = b'{"type":"log","level":"info","message":"idle"}'
             super().__init__(SERVICE_UUID, True)
@@ -119,19 +128,23 @@ def main() -> None:
             if len(self._tx_buf) > 65536:
                 self._tx_buf.clear()
                 return
-            _try_apply_json_frames(self._tx_buf, self.virtual)
+            _try_apply_json_frames(self._tx_buf, self.virtual, self.tests)
 
         @characteristic(RX_UUID, CharFlags.NOTIFY | CharFlags.READ)
         def rx_characteristic(self, options):  # noqa: ARG002
             return bytes(self._rx_value)
 
         def _prepare_rx(self) -> None:
-            """Prépare un JSON type log. changed() est appelé depuis la boucle asyncio (même thread que register)."""
-            snap = self.virtual.copy_locked()
-            if snap.ts_ms == 0 and snap.seq == 0:
-                message = "idle"
+            result = getattr(self.tests, "last_result", "") or ""
+            if result:
+                self.tests.last_result = ""
+                message = result
             else:
-                message = f"seq={snap.seq}"
+                snap = self.virtual.copy_locked()
+                if snap.ts_ms == 0 and snap.seq == 0:
+                    message = "idle"
+                else:
+                    message = f"seq={snap.seq}"
             self._rx_value = json.dumps(
                 {
                     "type": "log",
@@ -178,7 +191,7 @@ def main() -> None:
         except Exception as e:
             print(f"[ble_gatt] Impossible d’allumer l’adaptateur ({e}).", file=sys.stderr)
 
-        srv = RobotDuckGattService(shared_virtual)
+        srv = RobotDuckGattService(shared_virtual, shared_tests)
         await srv.register(bus, adapter=adapter)
 
         if not args.no_agent:

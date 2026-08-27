@@ -125,3 +125,40 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 - **`--no-agent`** : ne pas enregistrer `NoIoAgent` (pairing déjà géré ou souci de permissions).
 - **`--dbus-adapter PATH`** : chemin D-Bus explicite de l’adaptateur (ex. `/org/bluez/hci0`).
 
+## Messages hors ControllerFrame (réservés)
+
+Ces canaux **ne sont pas** des champs de `ControllerFrame`. Aucun envoi depuis l’UI tant que le schéma n’est pas adopté ici.
+
+### Arrêt système (D-021)
+
+Message **dédié** (halt Linux / `poweroff`). **Pas** `safety.estop`, **pas** un bouton Xbox. Schéma JSON : **pas encore figé**.
+
+### Tests accessoires (D-018)
+
+Message **dédié**, **pas** un `ControllerFrame`. Aligné banc SSH (yeux, projecteur, HP, antennes), **sans marche**.
+
+```json
+{ "type": "test", "v": 1, "action": "eyes_steady" }
+```
+
+`action` :
+
+| Valeur | Banc SSH | Effet |
+|--------|----------|--------|
+| `eyes_steady` | `1` | Yeux fixe ON/OFF |
+| `eyes_blink` | `2` | Clignotement ON/OFF |
+| `projector` | `3` | Projecteur ON/OFF |
+| `speaker` | `4` | Son aléatoire |
+| `antennas_wiggle` | `5` | Oscillation 2 s |
+| `antennas_pulse` | `6` | Consigne 90° |
+
+Le robot répond sur RX (`type: log`, `message` = résultat).
+
+### Vidéo (D-015, D-022)
+
+**Hors BLE GATT.** Deux temps, lots ultérieurs :
+1. Afficher ce que voit le robot (caméra → tablette).
+2. Interpréter l’image **sur la tablette** (pseudo-mode IA) pour lancer des actions.
+
+Ne pas encoder de JPEG / flux vidéo sur la caractéristique RX.
+

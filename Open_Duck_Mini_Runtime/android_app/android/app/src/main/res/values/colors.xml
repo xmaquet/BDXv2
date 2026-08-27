@@ -1,6 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#119EFF</color>
-    <color name="colorPrimaryDark">#388DFC</color>
-    <color name="colorAccent">#FF4081</color>
+    <color name="colorPrimary">#0D6EFD</color>
+    <color name="colorPrimaryDark">#212529</color>
+    <color name="colorAccent">#0DCAF0</color>
+    <color name="bs_blue">#0D6EFD</color>
+    <color name="bs_blue_press">#0B5ED7</color>
+    <color name="bs_green">#198754</color>
+    <color name="bs_green_press">#157347</color>
+    <color name="bs_red">#DC3545</color>
+    <color name="bs_red_press">#BB2D3B</color>
+    <color name="bs_yellow">#FFC107</color>
+    <color name="bs_yellow_press">#FFCA2C</color>
+    <color name="bs_cyan">#0DCAF0</color>
+    <color name="bs_cyan_press">#3DD5F3</color>
+    <color name="bs_teal">#20C997</color>
+    <color name="bs_teal_press">#1AA179</color>
+    <color name="bs_gray">#6C757D</color>
+    <color name="bs_gray_press">#5C636A</color>
+    <color name="bs_dark">#212529</color>
+    <color name="bs_dark_2">#343A40</color>
+    <color name="bs_dark_3">#495057</color>
+    <color name="bs_light">#F8F9FA</color>
+    <color name="bs_muted">#ADB5BD</color>
+    <color name="bdx_bg">#212529</color>
+    <color name="bdx_card">#343A40</color>
+    <color name="bdx_card_inner">#2B3035</color>
+    <color name="bdx_text">#F8F9FA</color>
+    <color name="bdx_muted">#ADB5BD</color>
+    <color name="bdx_dim">#6C757D</color>
+    <color name="bdx_danger">#DC3545</color>
 </resources>

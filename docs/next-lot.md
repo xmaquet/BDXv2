@@ -38,11 +38,11 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ## Lot 3 — App Android BLE + sous-menu Tests
 
-**Statut :** audit fait (2026-08-25) ; **aucun code**, **aucun APK**, **aucun test tablette**. Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**.
+**Statut :** lot **3a** (dump TX/RX BLE) **tenu** sur tablette native (2026-08-27). **D-022 :** UI produit = native ; accueil à menus. Tests actionnables et halt **pas encore envoyés** (contrat `protocol.md` à figer). Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**, **D-021**, **D-022**.
 
-**Objectif :** APK connectée en BLE au Pi ; commandes dans les deux sens ; **sous-menu Tests** (yeux, projecteur, HP, antennes) **indépendant de la marche**. Pas de surface Xbox.
+**Objectif :** APK connectée en BLE au Pi ; commandes dans les deux sens ; **sous-menu Tests** (yeux, projecteur, HP, antennes) **indépendant de la marche**. Pas de surface Xbox. **Arrêt système** depuis l’UI (D-021), hors Tests, avec confirmation.
 
-**Hors périmètre immédiat :** manette Xbox, vidéo Picam.
+**Hors périmètre immédiat :** manette Xbox, **vidéo** (deux temps : affichage puis IA tablette — D-022).
 
 **Install Pi :** `pi-setup/` n’installe pas `[control]` / Xbox ; extras défaut `ble,hardware`.
 

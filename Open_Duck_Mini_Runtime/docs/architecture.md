@@ -1,22 +1,22 @@
 ## Architecture Android (UI tablette) → Robot
 
-Objectif : piloter le robot depuis une **tablette Android** avec une UI tactile, en restant aligné sur le modèle runtime existant (`xbox_controller.py` / `Buttons` / `get_last_command()`), **sans** dépendre du Web Bluetooth dans la WebView.
+Objectif : piloter le robot depuis une **tablette Android** avec une UI tactile **native**, en restant aligné sur le modèle runtime existant (`xbox_controller.py` / `Buttons` / `get_last_command()`). Le BLE est un **plugin Kotlin**, pas du Web Bluetooth.
 
 ### Vue d’ensemble des composants
 
 | Composant | Rôle |
 |-----------|------|
-| **`android_ui/`** | Frontend React + TypeScript + Vite : manette virtuelle, état `UiControllerState`, couche transport qui émet des **`ControllerFrameV1`** (~**20 Hz**), clamp des axes/triggers, logique **watchdog** et **arrêt d’urgence** (combo type Start+Select) côté UI / orchestration TS. |
-| **`android_app/`** | Projet **Capacitor** : embarque le build statique de `android_ui/dist`, ajoute le **plugin natif Kotlin** pour BLE. |
+| **`android_app/`** | App **native** (layouts XML + `MainActivity`) : accueil à menus (D-022), plugin **RobotBlePlugin**. Capacitor n’est plus la surface UI ; il peut rester hôte du plugin. |
+| **`android_ui/`** | Proto React / Figma **gelé** (D-022). Ne plus y ajouter Tests, halt ni vidéo. |
 | **`android_app/.../RobotBlePlugin.kt`** | Scan / connexion / **écriture GATT** sur la caractéristique TX, **notifications** RX, permissions Android modernes, **watchdog natif** et **reconnexion** best-effort. |
 | **`mini_bdx_runtime/ble_gatt_server.py`** | Sur la **Raspberry Pi** (Linux + BlueZ) : serveur GATT (`bluez-peripheral`), mêmes **UUID** que le plugin ; réassemble les écritures JSON et met à jour un **`VirtualJoystickState`**. |
 | **`mini_bdx_runtime/xbox_bridge.py`** | **`AndroidBridgeController`** : lit le joystick « virtuel » et expose **`get_last_command()`** comme la manette Xbox pour les scripts RL / tête / antennes. Option **TCP** (`--tcp-port`) pour un relais réseau. |
 
 ### Flux de données (BLE direct)
 
-1. L’utilisateur manipule l’UI dans l’app Android.
-2. La couche transport TS construit une ligne **JSON** conforme à **`docs/protocol.md`** (`v`, `axes`, `triggers`, `buttons`, `safety`, etc.).
-3. Capacitor appelle le plugin Kotlin ; celui-ci **écrit** sur la caractéristique **TX** (préférence write / write-without-response selon la config).
+1. L’utilisateur agit dans l’UI **native**.
+2. L’activité construit une ligne **JSON** conforme à **`docs/protocol.md`** (`v`, `axes`, `triggers`, `buttons`, `safety`, etc.).
+3. **RobotBlePlugin** **écrit** sur la caractéristique **TX** (préférence write-without-response).
 4. Sur la Pi, **`ble_gatt_server`** reçoit les octets (y compris **écritures fragmentées**), décode un ou plusieurs objets JSON et appelle **`VirtualJoystickState.apply_json()`**.
 5. **`AndroidBridgeController`** (même processus quand lancé via `bdx-ble-robot`) interroge périodiquement l’état et produit les **mêmes `last_commands`** / événements boutons que la chaîne manette.
 
