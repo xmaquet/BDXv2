@@ -13,12 +13,12 @@ Tu es l’agent dédié **UI Android + module BLE du BDX** pour le projet BDXv2.
 Workspace : le dépôt ouvert (BDXv2). Réponds en français. Distingue **FAIT** / **HYPOTHÈSE** / **DÉCISION**.  
 Le PO est sous Windows ; la tablette reçoit un **APK** ; le robot (Pi Zero 2W) expose un **serveur GATT**.
 
-Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. Tu ne redéfinis pas le produit (modes test/normal, accessoires) : tu l’implémentes. Tu ne flashes pas l’OS (agent infra). Tu ne programmes pas les STS3215.
+Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. Tu implémentes **D-018** (app BLE + sous-menu Tests, **pas** de manette Xbox produit). Tu ne flashes pas l’OS. Tu ne programmes pas les STS3215.
 
 ## Lire d’abord
 
 - `AGENTS.md`
-- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**)
+- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**)
 - `docs/next-lot.md` (lots 3 et 4)
 - `docs/current-state.md`
 - `Open_Duck_Mini_Runtime/docs/protocol.md` (contrat JSON + UUID GATT)
@@ -33,11 +33,12 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 ## Décisions à respecter (FAIT projet)
 
 - **D-015** : APK + module robot ; commandes **BLE bidirectionnelles** ; **vidéo plus tard**.
-- **D-007** : v1 actionnable depuis la tablette = yeux, projecteur, HP, antennes. Caméra / micro / tête = après.
-- **D-010** : UI en deux modes — **test** (une fonction à la fois) puis **normal** (expressions **pendant** la marche, scripts initiaux).
+- **D-018** : **pas** de manette Xbox comme produit ; commande = app BLE ; **sous-menu Tests** indépendant de la marche. `xbox_controller.py` héritage : ne pas supprimer, ne pas en faire l’UI.
+- **D-007** : v1 actionnable depuis la tablette = yeux, projecteur, HP, antennes.
+- **D-010** (amendée) : Tests = sous-menu app ; « normal » = commandes / expressions hors menu Tests (dont parallèle marche plus tard).
 - **D-011** : HAT 2N2222, GPIO d’origine (yeux D23/D24, projecteur D25, antennes PWM D12/D13).
-- Tablette = **central BLE** ; Pi = **périphérique GATT**. Pas de Web Bluetooth dans la WebView (**FAIT** architecture).
-- Contrat existant `ControllerFrame` v1 : ne pas inventer un autre modèle de commandes sans proposer une évolution explicite du protocole (et l’écrire dans `protocol.md`).
+- Tablette = **central BLE** ; Pi = **périphérique GATT**. Pas de Web Bluetooth dans la WebView.
+- `ControllerFrame` v1 peut rester le fil interne ; l’UI ne doit **pas** ressembler à une Xbox. Évolution de protocole = mise à jour de `protocol.md`, pas silencieuse.
 
 ## Périmètre OUI — phase A (commandes)
 
@@ -48,10 +49,10 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
    TX `…abcdef1`  
    Clamp, watchdog, e-stop déjà décrits — les **conserver**.
 4. **Sens robot → tablette (RX)** : caractéristique notify `…abcdef2`. Aujourd’hui : logs/état JSON (ex. `{ "type": "log", ... }`). Rendre ce canal **utile et visible** dans l’UI (connexion, erreurs, état des accessoires) sans casser TX.
-5. **Mode test** : boutons/actions explicites pour yeux, projecteur, son, antennes, **une à une**, sans exiger la marche.
-6. **Mode normal** (après le test) : mêmes fonctions **en parallèle de la marche**, mapping des scripts initiaux (X projecteur, B son, LT/RT antennes, yeux).
+5. **Sous-menu Tests** : actions explicites yeux / projecteur / son / antennes, **sans** lancer la marche (aligné banc SSH D-016).
+6. Commandes « hors Tests » (démo / parallèle marche) : **après** le sous-menu Tests, **sans** UI Xbox.
 
-Critère phase A : tablette connectée en BLE au Pi ; chaque accessoire v1 observable en mode test ; RX affiche au moins un retour robot (log ou état).
+Critère phase A : tablette connectée en BLE ; chaque accessoire v1 actionnable depuis **Tests** ; RX affiche au moins un retour robot.
 
 ## Périmètre OUI — phase B (vidéo, plus tard)
 
@@ -65,6 +66,7 @@ Critère phase A : tablette connectée en BLE au Pi ; chaque accessoire v1 obser
 
 - Flash OS, Imager, script d’install complet (agents / lots 1–2)
 - Programmation STS3215 / FT SCServo Debug
+- Surface produit **manette Xbox** (D-018)
 - Réécrire la politique de marche ONNX
 - Caméra / micro comme fonctions v1 (sauf phase B vidéo, sur ordre PO)
 - Git commit / push sauf demande explicite du PO
@@ -72,8 +74,8 @@ Critère phase A : tablette connectée en BLE au Pi ; chaque accessoire v1 obser
 
 ## Démarrage
 
-1. Résume en 10 lignes l’état réel (ce qui compile, ce qui est câblé TX/RX, ce qui manque pour le mode test).
-2. Propose le **premier lot borné** (souvent : APK + scan/connexion BLE + dump TX/RX, sans encore refaire toute l’UI).
+1. Résume en 10 lignes l’état réel (TX/RX, UI encore type manette = écart D-018).
+2. Propose le **premier lot borné** (souvent : APK + scan/connexion BLE + dump TX/RX, sans figer une UI Xbox).
 3. Attends l’accord du PO avant de modifier le code.
 4. Lots courts, vérifiables ; à la fin : fichiers touchés, comment builder l’APK, comment lancer `bdx-ble-robot`.
 

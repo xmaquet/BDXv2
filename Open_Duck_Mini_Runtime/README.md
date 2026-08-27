@@ -167,22 +167,15 @@ python -m pip install --upgrade pip setuptools wheel
 pip install --no-cache-dir -e .
 ```
 
-**Installation automatisée** (`install.sh`) :
-
-- **Depuis un dépôt déjà cloné** (le script détecte le `.git` à côté de lui et travaille dans ce dossier) :
+**Installation automatisée (BDXv2) :** canon **`pi-setup/install.sh`** (D-019). Ce `install.sh` n’est plus qu’un wrapper.
 
 ```bash
-chmod +x install.sh
-./install.sh
+bash ~/BDXv2/pi-setup/install.sh
+# machine neuve :
+curl -fsSL https://raw.githubusercontent.com/xmaquet/BDXv2/main/pi-setup/install.sh | bash
 ```
 
-- **Machine neuve** (clone dans `~/Open_Duck_Mini_Runtime` par défaut, branche `v2`) : télécharge le script puis lance-le, ou exporte les variables avant :
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/xmaquet/Open_Duck_Mini_Runtime/v2/install.sh -o install.sh
-bash install.sh
-# optionnel : REPO_DIR, REPO_URL, BRANCH, GIT_SHALLOW=0, SKIP_GIT_PULL=1 — voir l’en-tête de install.sh
-```
+Détail : `pi-setup/README.md`. Extras défaut : `ble,hardware` — **pas** `[control]` / Xbox (D-018).
 
 Le script installe `git` si besoin, clone ou met à jour le dépôt (**sans `git pull` si le working tree n’est pas propre**), copie `example_config.json` vers `~/duck_config.json` seulement si absent, puis apt / venv / `pip install -e .` et contrôles `numpy` / `pygame` / `cv2`.
 

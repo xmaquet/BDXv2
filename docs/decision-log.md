@@ -135,6 +135,8 @@ L’application Android expose deux modes :
 
 Le mode test est le premier objectif logiciel après que le Pi soit installé et joignable. Le mode normal vient ensuite.
 
+**Précision D-018 (2026-08-27) :** le « mode test » est un **sous-menu Tests** de l’app Android, **indépendant de la marche**. La commande opérateur n’est **plus** une manette Xbox (physique ou virtuelle comme produit).
+
 ---
 
 ## D-011 — HAT opérateur, GPIO d’origine, 2N2222
@@ -161,7 +163,7 @@ Après une install OS neuve, l’opérateur doit pouvoir lancer **un script d’
 
 Les scripts existants sont un point de départ (**ADAPTER**, pas réécrire sans besoin).
 
-**Avancement (2026-08-25) :** `install.sh` cible **`xmaquet/BDXv2`** branche `main` ; `bdx_full_install.sh` et `install_bdx_runtime.sh` délèguent. **Pas encore exécuté** sur le Pi.
+**Avancement (2026-08-27) :** canon = **`pi-setup/install.sh`** (D-019). Les anciens chemins `Open_Duck_Mini_Runtime/install.sh`, `scripts/bdx_full_install.sh` et `scripts/install_bdx_runtime.sh` **délèguent**. **Pas exécuté** sur le Pi : séquence **D-020**.
 
 ---
 
@@ -224,6 +226,50 @@ Menu figé (2026-08-25) : `1` yeux fixe, `2` yeux clignotement, `3` projecteur, 
 Les tests / réglages passent par un **menu principal** (`run_bdx_lab.sh`) qui lance des mini-scripts **choisis un par un**. Aucune entrée n’est ajoutée par scan du dépôt : seulement sur demande explicite du PO. Premier outil : banc d’expression (D-016).
 
 Le checkout Git **sur le Pi** n’inclut pas `docs/` (inutile à l’exécution). Les docs restent dans le dépôt GitHub / le workspace PC.
+
+---
+
+## D-018 — Commande = app Android BLE ; Xbox hors produit ; Tests dans l’app
+
+**Statut :** adoptée (2026-08-27, PO)
+
+Dans **cette** version BDXv2 :
+
+- la **commande opérateur** passe par l’**application Android** connectée en **BT BLE** au BDX ;
+- le chemin **manette Xbox** (Bluetooth HID / pygame joystick) est **abandonné** comme surface produit ;
+- l’app comporte un **sous-menu Tests** : fonctions d’accessoires **indépendantes de la marche** (yeux, projecteur, HP, antennes), complémentaires du banc SSH (D-016).
+
+Le code héritage `xbox_controller.py` **n’est pas à supprimer** (référence / marche amont). Il n’est **pas** un prérequis d’install ni d’UI.
+
+Le protocole JSON interne peut rester aligné sur `ControllerFrame` v1 tant qu’une évolution n’est pas décidée ; l’UI ne doit **pas** se présenter comme une manette Xbox.
+
+**Conséquence install :** extra pip **`[ble]`** et **`[hardware]`** ; **pas** `[control]` / appairage Xbox. pygame via **apt** (`python3-pygame`) pour **l’audio** (`sounds.py`), pas pour une manette.
+
+---
+
+## D-019 — Orchestration Pi dans `pi-setup/`
+
+**Statut :** adoptée (2026-08-27, PO)
+
+L’installation post-OS vit dans **`pi-setup/`** à la racine du monorepo. Ce n’est **pas** un deuxième runtime Python : le paquet reste `Open_Duck_Mini_Runtime/` (`pip install -e .`).
+
+**Clone neuf sur le Pi :** sparse checkout `Open_Duck_Mini_Runtime` + `pi-setup` (pas de `Open_Duck_Mini/` CAO, pas de `docs/` — D-017). Un clone **déjà complet** n’est **pas** réduit.
+
+**Idempotence :** venv, overlay I2S, `~/duck_config.json`, groupes et clone Git existants sont réutilisés. Pas d’écrasement de config. Pas de reboot automatique (I2S : reboot manuel si overlay nouvellement écrit).
+
+Les scripts héritage sous `Open_Duck_Mini_Runtime/` restent des **wrappers**.
+
+---
+
+## D-020 — Le robot sert de banc de dev ; install complète plus tard
+
+**Statut :** adoptée (2026-08-27, PO)
+
+Le BDX est **à la fois** plateforme de développement et de production. L’install post-OS (`pi-setup/install.sh`) **n’est pas** à lancer tant que les développements propres à cette version n’ont **pas commencé** — en particulier l’**app de commande** (lot 3) — afin de les **tester en place** sur le robot.
+
+Une **réinstallation complète** reste possible **en fin de cycle**, pour vérifier que le script d’install (D-012) reconstitue un Pi propre.
+
+Le banc SSH actuel (D-016) et le venv minimum **restent** le socle de travail jusqu’à ce go.
 
 ---
 

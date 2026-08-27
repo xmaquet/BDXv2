@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-26 (canon aligné sur le bilan agents).
+Dernière mise à jour : 2026-08-27 (pi-setup, D-019, D-020).
 
 ## Situation du projet
 
@@ -8,7 +8,7 @@ Dernière mise à jour : 2026-08-26 (canon aligné sur le bilan agents).
 
 Le Pi Zero 2W a un **OS Lite 64-bit neuf**. SSH joignable (user `bdxv2`, hostname `bdxv2`, IP constatée `192.168.10.131`). Clone Git : `~/BDXv2`. Venv banc conservé.
 
-Install runtime **complète** (D-012 / `install.sh`) : script **adapté** vers BDXv2, **pas exécuté** sur le Pi. Le robot a un **minimum** pour le banc SSH (Blinka, pygame, `lgpio`), pas l’install BLE/hardware/RL.
+Install runtime **complète** (D-012 / D-019) : canon **`pi-setup/install.sh`**, **écrit, pas exécuté** sur le Pi (**D-020** : attendre les devs version, surtout l’app de commande). Le robot a un **minimum** pour le banc SSH (Blinka, pygame, `lgpio`), pas l’install BLE/hardware/RL.
 
 ## Banc SSH (D-016) — clos
 
@@ -33,7 +33,7 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 ## Tablette / BLE (D-015)
 
-Chaîne TX existante dans le code ; UI = manette virtuelle, pas encore modes test/normal. **Aucun APK construit**, **aucun test BLE** sur tablette. Audit fait ; lot 3a proposé, pas démarré.
+Chaîne TX existante dans le code ; l’UI actuelle est encore une **manette virtuelle** (héritage). **D-018 :** produit = app BLE + sous-menu **Tests** (pas de Xbox). **Aucun APK construit**, **aucun test BLE**. Audit fait ; lot 3a proposé, pas démarré.
 
 ## Contenu du workspace
 
@@ -43,13 +43,14 @@ Chaîne TX existante dans le code ; UI = manette virtuelle, pas encore modes tes
 | `docs/` | Canon + prompts agents (`docs/hardware/`) |
 | `Open_Duck_Mini/` | Mécanique / sim |
 | `Open_Duck_Mini_Runtime/` | Runtime Pi + app tablette BLE |
+| `pi-setup/` | Orchestration install post-OS (D-019) |
 
 ## Cible (roadmap)
 
 1. OS neuf + SSH — **fait**.
-2. Script d’install complet sur le Pi — **à lancer**.
-3. UI **mode test** BLE.
-4. UI **mode normal** (expressions pendant la marche).
+2. Script d’install (`pi-setup/`) — **écrit** ; exécution Pi **reportée** (D-020).
+3. App Android BLE + sous-menu **Tests** (D-018) — **prochaine étape**.
+4. Commandes « normales » (dont expressions pendant la marche), **sans** manette Xbox.
 
 ## Classification
 
@@ -59,17 +60,19 @@ Chaîne TX existante dans le code ; UI = manette virtuelle, pas encore modes tes
 - Banc SSH et overlay I2S.
 - Chaîne BLE existante (à étendre, pas à jeter).
 - `v2_rl_walk_mujoco.py` comme référence du mode normal.
-- `install.sh` (cible BDXv2 `main`).
+- `pi-setup/install.sh` (cible BDXv2 `main`) ; wrappers héritage.
 
 ### ADAPTER
 
-- UI : modes test / normal (D-010) ; RX utile.
-- Yeux : commande opérateur en mode test tablette (déjà possible au banc SSH).
-- `install.sh` : l’exécuter sur le Pi (BLE, hardware, I2C, groupes).
+- UI : app BLE + **sous-menu Tests** (D-018) ; ne pas livrer une manette Xbox.
+- RX utile (état / logs).
+- `pi-setup` / install : BLE + audio ; **pas** Xbox `[control]`.
+- Yeux commandables depuis Tests (déjà au banc SSH).
 
 ### REMPLACER
 
-- Réingénierie large : **reportée** (D-C).
+- Surface produit manette Xbox : **abandonnée** (D-018) — le fichier héritage reste.
+- Réingénierie large de la stack : **reportée** (D-C).
 
 ### À INVESTIGUER
 

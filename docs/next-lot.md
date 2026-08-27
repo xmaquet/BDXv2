@@ -26,25 +26,25 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ## Lot 2 — Script d’install complet
 
-**Statut :** script **adapté** (cible `xmaquet/BDXv2` branche `main`), **pas exécuté** sur le Pi. Le banc SSH a posé un minimum (Blinka / pygame / I2S), pas D-012.
+**Statut :** **`pi-setup/` créé** (2026-08-27) ; **pas exécuté** sur le Pi. Le banc SSH a posé un minimum (Blinka / pygame / I2S), pas encore D-012 complet (BLE / rustypot).
 
-**Objectif :** un script lançable **après** l’OS, qui installe tout le nécessaire BDXv2 sur le Pi (D-012).
+**Objectif :** un script lançable **après** l’OS, qui installe tout le nécessaire BDXv2 sur le Pi (D-012, D-019).
 
-**Canon :** `Open_Duck_Mini_Runtime/install.sh`. `scripts/bdx_full_install.sh` et `scripts/install_bdx_runtime.sh` délèguent.
+**Canon :** `pi-setup/install.sh`. Wrappers : `Open_Duck_Mini_Runtime/install.sh`, `scripts/bdx_full_install.sh`, `scripts/install_bdx_runtime.sh`.
 
-**Attente :** go PO pour exécution SSH.
+**Attente :** **reportée** (D-020). Ne pas lancer sur le Pi tant que les devs propres à cette version (surtout l’app de commande, lot 3) n’ont pas commencé. Réinstall complète possible en fin de cycle.
 
 ---
 
-## Lot 3 — BLE + mode test
+## Lot 3 — App Android BLE + sous-menu Tests
 
-**Statut :** audit fait (2026-08-25) ; **aucun code**, **aucun APK**, **aucun test tablette**. Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décision **D-015**.
+**Statut :** audit fait (2026-08-25) ; **aucun code**, **aucun APK**, **aucun test tablette**. Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**.
 
-**Objectif :** APK connectée en BLE au Pi ; commandes **dans les deux sens** ; mode test (yeux, projecteur, HP, antennes une à une).
+**Objectif :** APK connectée en BLE au Pi ; commandes dans les deux sens ; **sous-menu Tests** (yeux, projecteur, HP, antennes) **indépendant de la marche**. Pas de surface Xbox.
 
-**Premier lot proposé (3a, pas autorisé) :** build APK + scan/connexion + dump TX/RX.
+**Hors périmètre immédiat :** manette Xbox, vidéo Picam.
 
-**Hors périmètre immédiat :** marche, mode normal, vidéo Picam.
+**Install Pi :** `pi-setup/` n’installe pas `[control]` / Xbox ; extras défaut `ble,hardware`.
 
 ---
 
@@ -54,12 +54,12 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ---
 
-## Lot 4 — Mode normal
+## Lot 4 — Commandes hors Tests (dont parallèle marche)
 
-**Statut :** pas démarré.
+**Statut :** pas démarré. Dépend de l’app BLE (lot 3). **Pas** de manette Xbox (D-018).
 
-**Objectif :** expressions **en parallèle de la marche**, scripts initiaux (`v2_rl_walk_mujoco.py`).
+**Objectif :** commandes de démo hors sous-menu Tests ; expressions pendant la marche le cas échéant (`v2_rl_walk_mujoco.py` comme référence d’effets, pas comme UI).
 
 ---
 
-**Prochaine étape recommandée :** lot 2 (`install.sh` sur le Pi), puis lot 3a (APK / BLE).
+**Prochaine étape recommandée :** lot 3 (app Android BLE), **pas** le lot 2 sur le Pi (D-020).

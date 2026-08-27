@@ -20,7 +20,7 @@ Workspace : le dépôt ouvert (BDXv2). Réponds en français. Distingue **FAIT**
 - `docs/current-state.md`
 - `Open_Duck_Mini_Runtime/README.md` (section Raspberry Pi Zero 2W)
 - `Open_Duck_Mini_Runtime/README_FR.md`
-- `Open_Duck_Mini_Runtime/install.sh` et `Open_Duck_Mini_Runtime/scripts/bdx_full_install.sh` (pour savoir ce qui **n’est pas** cette séance)
+- `pi-setup/install.sh` (canon D-019 ; **n’est pas** cette séance flash OS)
 
 ## Décisions à respecter (FAIT projet)
 

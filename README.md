@@ -12,6 +12,7 @@ La première version vise à **actionner depuis une tablette Android** les yeux,
 | `AGENTS.md` | Règles de travail pour les agents |
 | `Open_Duck_Mini/` | Mécanique, simulation, politiques (copie) |
 | `Open_Duck_Mini_Runtime/` | Runtime Raspberry Pi et app tablette BLE (copie) |
+| `pi-setup/` | Installation post-OS sur le Pi |
 
 Les décisions produit sont dans [`docs/decision-log.md`](docs/decision-log.md). L’état réel est dans [`docs/current-state.md`](docs/current-state.md).
 
