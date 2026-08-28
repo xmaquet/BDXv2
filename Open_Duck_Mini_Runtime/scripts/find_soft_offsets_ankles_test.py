@@ -5,6 +5,10 @@ Calibre left_ankle (ID 24) et right_ankle (ID 14) dans duck_config.json.
 Seules les chevilles ciblées bougent ; les 12 autres servos restent à leur
 position actuelle (évite le pic de courant / disjonction BMS).
 
+L'offset enregistré est la position **brute** (rad bus) de la pose manuelle :
+software 0 → goal bus = offset. Ne pas utiliser un delta software, car le
+servo n'a pas forcément atteint le zéro logiciel avant l'ajustement à la main.
+
 Usage:
   python find_soft_offsets_ankles_test.py
   python find_soft_offsets_ankles_test.py --port /dev/ttyACM0
@@ -20,10 +24,16 @@ from mini_bdx_runtime.rustypot_position_hwi import HWI
 
 # Ordre : jambe gauche puis jambe droite (doc calibration)
 TARGET_JOINTS = ["left_ankle", "right_ankle"]  # IDs 24, 14
+VERIFY_KP = 32
 
 
 def joint_index(hwi: HWI, joint_name: str) -> int:
     return list(hwi.joints.keys()).index(joint_name)
+
+
+def read_raw_position(hwi: HWI, joint_id: int) -> float:
+    raw = hwi.io.read_present_position([joint_id])
+    return float(raw[0] if isinstance(raw, (list, tuple)) else raw)
 
 
 def read_present_goals(hwi: HWI) -> dict[str, float]:
@@ -42,15 +52,6 @@ def hold_all_at_present(hwi: HWI, goals: dict[str, float] | None = None) -> dict
     return goals
 
 
-def move_joint_to_zero(hwi: HWI, joint_name: str, goals: dict[str, float] | None = None) -> None:
-    """Move one ankle to software zero; all other joints keep their current goal."""
-    if goals is None:
-        goals = read_present_goals(hwi)
-    goals = dict(goals)
-    goals[joint_name] = 0.0
-    hwi.set_position_all(goals)
-
-
 def safe_hold_current(hwi: HWI) -> dict[str, float]:
     """Enable low torque while holding present positions (no global move)."""
     ids = list(hwi.joints.values())
@@ -64,6 +65,18 @@ def safe_hold_current(hwi: HWI) -> dict[str, float]:
     goals = read_present_goals(hwi)
     print("Motors holding current pose (low torque, Kp=2). Only target ankles will move.")
     return goals
+
+
+def command_software_zero(hwi: HWI, joint_name: str, joint_id: int) -> float:
+    """Command software 0 on one ankle (bus goal = offset) and return software reading."""
+    hwi.io.set_kps([joint_id], [VERIFY_KP])
+    hwi.set_position(joint_name, 0.0)
+    time.sleep(1.2)
+    idx = joint_index(hwi, joint_name)
+    positions = hwi.get_present_positions()
+    if positions is None:
+        raise RuntimeError("Could not read present positions")
+    return float(positions[idx])
 
 
 parser = argparse.ArgumentParser(
@@ -81,8 +94,8 @@ dummy_config = DuckConfig(config_json_path=None, ignore_default=True)
 print("======")
 print("Ankle offset test — IDs 24 (left_ankle) and 14 (right_ankle) only")
 print(
-    "Only the ankle being calibrated moves to zero. "
-    "The other 13 servos stay at their current position."
+    "Place each ankle manually at mechanical zero (torque off). "
+    "Offset = raw bus position at that pose; then software 0 should match it."
 )
 print("======")
 print("")
@@ -100,7 +113,6 @@ try:
             continue
 
         joint_id = hwi.joints[joint_name]
-        idx = joint_index(hwi, joint_name)
         ok = False
 
         print("")
@@ -109,37 +121,25 @@ try:
         while not ok:
             hold_goals = hold_all_at_present(hwi, hold_goals)
             time.sleep(0.3)
-            input(
-                f"Press Enter to move ONLY {joint_name} to software zero "
-                f"(other servos stay put)..."
-            )
-            move_joint_to_zero(hwi, joint_name, hold_goals)
-            time.sleep(0.8)
-            hold_goals = read_present_goals(hwi)
-
-            current_pos = hwi.get_present_positions()[idx]
-            if current_pos is None:
-                print("Could not read position, retrying...")
-                continue
 
             hwi.io.disable_torque([joint_id])
             input(
-                f"{joint_name} torque off. Move it to the desired zero position, "
-                "then press Enter to confirm the offset."
+                f"{joint_name} torque off. Move it to mechanical zero by hand, "
+                "then press Enter to record the offset."
             )
 
-            new_pos = hwi.get_present_positions()[idx]
-            offset = new_pos - current_pos
-            print(f" ---> Offset: {offset}")
-            hwi.joints_offsets[joint_name] = offset
-            hold_goals[joint_name] = float(new_pos)
+            raw_manual = read_raw_position(hwi, joint_id)
+            hwi.joints_offsets[joint_name] = raw_manual
+            print(f" ---> Offset (raw bus rad): {raw_manual:.4f}")
 
             input(
-                "Press Enter to move this ankle back to zero with offset applied."
+                "Press Enter to re-enable torque and command software zero "
+                "(should return to your manual zero)."
             )
-            move_joint_to_zero(hwi, joint_name, hold_goals)
-            time.sleep(0.5)
             hwi.io.enable_torque([joint_id])
+            sw_after = command_software_zero(hwi, joint_name, joint_id)
+            print(f"     Software position after zero cmd: {sw_after:.4f} (expect ~0)")
+
             hold_goals = read_present_goals(hwi)
 
             res = input("Is that ok? (Y/n): ").lower()
@@ -148,13 +148,13 @@ try:
                 ok = True
             else:
                 print("Retrying...")
-                hwi.joints_offsets[joint_name] = 0
+                hwi.joints_offsets[joint_name] = 0.0
 
     print("")
     print("Done!")
     print("Copy into ~/duck_config.json -> joints_offsets:")
     for name in TARGET_JOINTS:
-        print(f'    "{name}": {hwi.joints_offsets[name]},')
+        print(f'    "{name}": {hwi.joints_offsets[name]:.6f},')
 
 except KeyboardInterrupt:
     print("\nInterrupted — turning motors off.")
