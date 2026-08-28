@@ -83,13 +83,8 @@ class _FeetechSerial:
                 probe_ok = True
                 break
         if not probe_ok:
-            return []
-        out: list[Any] = []
-        for sid in ids:
-            raw = self._read_u8(sid, VOLTAGE_ADDR)
-            if raw is not None:
-                out.append(raw)
-        return out
+            return [None] * len(ids)
+        return [self._read_u8(sid, VOLTAGE_ADDR) for sid in ids]
 
     def _read_u8(self, sid: int, addr: int) -> int | None:
         payload = bytes((sid, 4, 2, addr, 1))
@@ -131,7 +126,7 @@ class _FeetechSerial:
 
 
 class StsBusMonitor:
-    def __init__(self, interval_s: float = 2.0) -> None:
+    def __init__(self, interval_s: float = 30.0) -> None:
         self.interval_s = interval_s
         self._lock = threading.Lock()
         self._snapshot: dict[str, Any] = {
@@ -142,6 +137,7 @@ class StsBusMonitor:
             "sts_n": len(STS_IDS),
             "bus_v": None,
             "sts_msg": "no_lib",
+            "sts": [{"id": sid, "ok": False} for sid in STS_IDS],
         }
         self._io: Any = None
         self._stop = threading.Event()
@@ -157,7 +153,17 @@ class StsBusMonitor:
         self._ready.set()
         threading.Thread(target=self._loop, name="sts_bus", daemon=True).start()
 
-    def _set(self, bus: str, ok: int, voltage: float | None, msg: str = "") -> None:
+    def _empty_sts(self) -> list[dict[str, Any]]:
+        return [{"id": sid, "ok": False} for sid in STS_IDS]
+
+    def _set(
+        self,
+        bus: str,
+        ok: int,
+        voltage: float | None,
+        msg: str = "",
+        sts: list[dict[str, Any]] | None = None,
+    ) -> None:
         with self._lock:
             self._snapshot = {
                 "type": "status",
@@ -167,6 +173,7 @@ class StsBusMonitor:
                 "sts_n": len(STS_IDS),
                 "bus_v": None if voltage is None else round(voltage, 2),
                 "sts_msg": msg,
+                "sts": list(sts) if sts is not None else self._empty_sts(),
             }
 
     def _log_once(self, reason: str) -> None:
@@ -179,7 +186,7 @@ class StsBusMonitor:
         self._ready.wait()
         while not self._stop.is_set():
             try:
-                ok, volts = self._read()
+                ok, volts, sts = self._read()
             except Exception as e:
                 self._drop_io()
                 self._set("down", 0, None, "no_reply")
@@ -188,7 +195,7 @@ class StsBusMonitor:
                 n = len(STS_IDS)
                 mean = (sum(volts) / len(volts)) if volts else None
                 if ok == 0:
-                    self._set("down", 0, None, self._down_code)
+                    self._set("down", 0, None, self._down_code, sts)
                     self._log_once(
                         {
                             "no_lib": "pyserial/rustypot/pypot absents",
@@ -198,33 +205,50 @@ class StsBusMonitor:
                         }.get(self._down_code, self._down_code)
                     )
                 elif ok < n:
-                    self._set("partial", ok, mean, "")
+                    self._set("partial", ok, mean, "", sts)
                     self._logged_reason = ""
                 else:
-                    self._set("ok", ok, mean, "")
+                    self._set("ok", ok, mean, "", sts)
                     self._logged_reason = ""
             if self._stop.wait(self.interval_s):
                 break
 
-    def _read(self) -> tuple[int, list[float]]:
+    def _read(self) -> tuple[int, list[float], list[dict[str, Any]]]:
         io = self._ensure_io()
         if io is None:
-            return 0, []
+            return 0, [], self._empty_sts()
         volt_raw = self._bulk(io, VOLT_METHODS)
-        volts: list[float] = []
-        for raw in volt_raw:
-            v = _to_volts(raw)
-            if v is not None:
-                volts.append(v)
+        sts, volts = self._map_servos(volt_raw, voltages=True)
         if volts:
-            return len(volts), volts
+            return len(volts), volts, sts
         pos_raw = self._bulk(io, POS_METHODS)
-        present = [p for p in pos_raw if p is not None]
+        sts_pos, present = self._map_servos(pos_raw, voltages=False)
         if present:
             self._log_once("bus répond, tension illisible")
-            return len(present), []
+            return len(present), [], sts_pos
         self._down_code = "no_reply"
-        return 0, []
+        return 0, [], self._empty_sts()
+
+    def _map_servos(
+        self, raws: list[Any], voltages: bool
+    ) -> tuple[list[dict[str, Any]], list[float]]:
+        sts = self._empty_sts()
+        good: list[float] = []
+        if len(raws) != len(STS_IDS):
+            return sts, good
+        for i, sid in enumerate(STS_IDS):
+            raw = raws[i]
+            if voltages:
+                v = _to_volts(raw)
+                ok = v is not None
+                if ok:
+                    good.append(v)
+            else:
+                ok = raw is not None
+                if ok:
+                    good.append(0.0)
+            sts[i] = {"id": sid, "ok": ok}
+        return sts, good
 
     def _bulk(self, io: Any, names: tuple[str, ...]) -> list[Any]:
         ids = list(STS_IDS)

@@ -126,7 +126,7 @@ def main() -> None:
     shared_virtual = VirtualJoystickState()
     shared_tests = AccessoryTests()
     shared_halt = SystemHalt()
-    shared_sts = StsBusMonitor()
+    shared_sts = StsBusMonitor(interval_s=30.0)
 
     class RobotDuckGattService(Service):
         """Service unique : TX (write JSON), RX (notify + read)."""

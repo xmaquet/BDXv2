@@ -54,16 +54,23 @@ public class MainActivity extends BridgeActivity {
     "motor.wav"
   };
 
+  private static final int[] STS_BADGE_IDS = {
+    10, 11, 12, 13, 14, 20, 21, 22, 23, 24, 30, 31, 32, 33
+  };
+
   private RobotBlePlugin ble;
   private TextView statusView;
   private TextView rxLine;
   private TextView homeSts;
+  private GridLayout homeStsBadges;
   private TextView testsHint;
   private String lastStsBus;
   private String lastStsMsg = "";
   private int lastStsOk;
   private int lastStsN = 14;
   private double lastBusV = Double.NaN;
+  private final boolean[] lastStsAlive = new boolean[STS_BADGE_IDS.length];
+  private boolean lastStsAliveKnown;
   private TextView shutdownResult;
   private Button shutdownSend;
   private CheckBox shutdownConfirm;
@@ -202,6 +209,8 @@ public class MainActivity extends BridgeActivity {
     TextView version = view.findViewById(R.id.home_version);
     version.setText(BuildConfig.VERSION_NAME);
     homeSts = view.findViewById(R.id.home_sts);
+    homeStsBadges = view.findViewById(R.id.home_sts_badges);
+    ensureStsBadges();
     paintHomeSts();
   }
 
@@ -489,6 +498,7 @@ public class MainActivity extends BridgeActivity {
     statusView = null;
     rxLine = null;
     homeSts = null;
+    homeStsBadges = null;
     testsHint = null;
     shutdownResult = null;
     shutdownSend = null;
@@ -592,6 +602,7 @@ public class MainActivity extends BridgeActivity {
     connected = false;
     lastStsBus = null;
     lastStsMsg = "";
+    lastStsAliveKnown = false;
     lastBusV = Double.NaN;
     if (ble != null) {
       ble.disconnectNative();
@@ -609,6 +620,7 @@ public class MainActivity extends BridgeActivity {
             connecting = false;
             lastStsBus = null;
             lastStsMsg = "";
+            lastStsAliveKnown = false;
             lastBusV = Double.NaN;
           }
           refreshBleBanner();
@@ -641,6 +653,28 @@ public class MainActivity extends BridgeActivity {
       lastStsOk = o.optInt("sts_ok", 0);
       lastStsN = o.optInt("sts_n", 14);
       lastStsMsg = o.optString("sts_msg", "");
+      lastStsAliveKnown = false;
+      for (int i = 0; i < lastStsAlive.length; i++) {
+        lastStsAlive[i] = false;
+      }
+      JSONArray servos = o.optJSONArray("sts");
+      if (servos != null) {
+        lastStsAliveKnown = true;
+        for (int i = 0; i < servos.length(); i++) {
+          JSONObject s = servos.optJSONObject(i);
+          if (s == null) {
+            continue;
+          }
+          int id = s.optInt("id");
+          boolean ok = s.optBoolean("ok");
+          for (int j = 0; j < STS_BADGE_IDS.length; j++) {
+            if (STS_BADGE_IDS[j] == id) {
+              lastStsAlive[j] = ok;
+              break;
+            }
+          }
+        }
+      }
       if (o.has("bus_v") && !o.isNull("bus_v")) {
         lastBusV = o.optDouble("bus_v");
       } else {
@@ -659,6 +693,7 @@ public class MainActivity extends BridgeActivity {
     if (!connected || lastStsBus == null) {
       homeSts.setText("Bus STS —");
       homeSts.setTextColor(muted);
+      paintStsBadges();
       return;
     }
     String volts =
@@ -686,6 +721,69 @@ public class MainActivity extends BridgeActivity {
       }
       homeSts.setText("STS hors bus · " + why);
       homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_red));
+    }
+    paintStsBadges();
+  }
+
+  private void ensureStsBadges() {
+    if (homeStsBadges == null || homeStsBadges.getChildCount() > 0) {
+      return;
+    }
+    float d = getResources().getDisplayMetrics().density;
+    int pad = Math.round(3 * d);
+    int min = Math.round(36 * d);
+    for (int id : STS_BADGE_IDS) {
+      TextView b = new TextView(this);
+      b.setText(String.valueOf(id));
+      b.setGravity(android.view.Gravity.CENTER);
+      b.setTextSize(12);
+      b.setTypeface(b.getTypeface(), android.graphics.Typeface.BOLD);
+      b.setMinWidth(min);
+      b.setMinHeight(min);
+      b.setPadding(pad, pad, pad, pad);
+      GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+      lp.width = 0;
+      lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
+      lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+      lp.setMargins(pad, pad, pad, pad);
+      b.setLayoutParams(lp);
+      b.setTag(id);
+      homeStsBadges.addView(b);
+    }
+  }
+
+  private void paintStsBadges() {
+    if (homeStsBadges == null) {
+      return;
+    }
+    int light = ContextCompat.getColor(this, R.color.bs_light);
+    int muted = ContextCompat.getColor(this, R.color.bs_muted);
+    boolean live = connected && lastStsAliveKnown;
+    for (int i = 0; i < homeStsBadges.getChildCount(); i++) {
+      View child = homeStsBadges.getChildAt(i);
+      if (!(child instanceof TextView)) {
+        continue;
+      }
+      TextView b = (TextView) child;
+      if (!live) {
+        b.setBackgroundResource(R.drawable.badge_sts_idle);
+        b.setTextColor(muted);
+        continue;
+      }
+      int idx = -1;
+      Object tag = b.getTag();
+      if (tag instanceof Integer) {
+        int id = (Integer) tag;
+        for (int j = 0; j < STS_BADGE_IDS.length; j++) {
+          if (STS_BADGE_IDS[j] == id) {
+            idx = j;
+            break;
+          }
+        }
+      }
+      boolean ok = idx >= 0 && lastStsAlive[idx];
+      b.setBackgroundResource(ok ? R.drawable.badge_sts_ok : R.drawable.badge_sts_ko);
+      b.setTextColor(light);
     }
   }
 
