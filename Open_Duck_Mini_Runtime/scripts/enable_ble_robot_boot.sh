@@ -31,6 +31,9 @@ Type=simple
 User=bdxv2
 Group=bdxv2
 Environment=HOME=/home/bdxv2
+Environment=PYTHONUNBUFFERED=1
+Environment=SDL_VIDEODRIVER=dummy
+Environment=SDL_AUDIODRIVER=alsa
 WorkingDirectory=${RUNTIME}
 ExecStart=${START}
 Restart=on-failure

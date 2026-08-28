@@ -14,8 +14,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
-import subprocess
 import sys
 import threading
 import time
@@ -67,20 +65,22 @@ def _try_apply_json_frames(
 
 
 def _spawn_boot_hello() -> None:
-    """Sous-processus : un plantage GPIO/pygame ne doit pas tuer le GATT."""
-    time.sleep(1.0)
-    env = os.environ.copy()
-    env.setdefault("SDL_VIDEODRIVER", "dummy")
-    env.setdefault("SDL_AUDIODRIVER", "alsa")
+    """Hello dans le même process que le GATT, après pause (GPIO/I2S au boot)."""
+    time.sleep(10.0)
+    line = "[ble_gatt] hello: début"
+    print(line, flush=True)
     try:
-        subprocess.Popen(
-            [sys.executable, "-m", "mini_bdx_runtime.boot_hello"],
-            env=env,
-            start_new_session=True,
-        )
-        print("[ble_gatt] séquence de démarrage lancée", flush=True)
+        with open("/tmp/bdx-boot-hello.log", "w", encoding="utf-8") as log:
+            log.write(line + "\n")
+    except Exception:
+        pass
+    try:
+        from mini_bdx_runtime.boot_hello import run_boot_hello
+
+        run_boot_hello()
+        print("[ble_gatt] hello: fin", flush=True)
     except Exception as e:
-        print(f"[ble_gatt] hello non lancé ({e})", flush=True)
+        print(f"[ble_gatt] hello: échec {e}", flush=True)
 
 
 def main() -> None:

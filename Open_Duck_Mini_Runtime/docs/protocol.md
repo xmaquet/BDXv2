@@ -126,7 +126,7 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 - **`--no-hello`** : ne pas jouer la séquence de démarrage.
 - **`--dbus-adapter PATH`** : chemin D-Bus explicite de l’adaptateur (ex. `/org/bluez/hci0`).
 
-Au lancement de `bdx-ble-robot` (sauf `--no-hello`) : 3 clignements des yeux, 4 oscillations d’antennes, puis `happy1.wav`. La séquence est un **sous-processus** (un plantage accessoires ne coupe pas le BLE).
+Au lancement de `bdx-ble-robot` (sauf `--no-hello`) : après ~10 s, 3 clignements des yeux, 4 oscillations d’antennes, puis `happy1.wav`. Logs : `journalctl -u bdx-ble-robot` et `/tmp/bdx-boot-hello.log`.
 
 Allumage du Pi : le GATT **n’était pas** autostarté. Une fois, hors `pi-setup/install.sh` :
 
