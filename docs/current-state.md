@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-28 (accueil STS).
+Dernière mise à jour : 2026-08-28 (STS OK 7,7 V).
 
 ## Situation du projet
 
@@ -29,15 +29,17 @@ I2S : `dtoverlay=max98357a`. GPIO d’origine inchangés.
 
 ## STS3215 (D-014)
 
-Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT SCServo Debug) : offset EEPROM 0, D=0, Lock=1. Zéro robot = **plus tard** (`find_soft_offsets.py`). Pas de test bus complet une fois montés.
+Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT SCServo Debug) : offset EEPROM 0, D=0, Lock=1. Zéro robot = **plus tard** (`find_soft_offsets.py`).
+
+**FAIT robot (2026-08-28, PO) :** accueil BLE = **STS OK · 7,7 V** (14/14, lecture pyserial sur `/dev/ttyACM0`, pas rustypot). Ce n’est pas encore le zéro / la marche.
 
 ## Tablette / BLE (D-015, D-022)
 
 **D-022 :** surface produit = **UI Android native** (accueil à menus). WebView Capacitor / proto Figma **abandonnés** comme UI. `android_ui/` gelé.
 
-**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** joue au lancement de `bdx-ble-robot` **dans le process GATT** (in-process). Autostart Linux : `scripts/enable_ble_robot_boot.sh` (une fois).
+**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif 2 s sur les WAV). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** joue au lancement de `bdx-ble-robot` **dans le process GATT** (in-process). Autostart Linux : `scripts/enable_ble_robot_boot.sh` (une fois ; relancer n’ajoute pas un second service, mais le process ignore SIGTERM : un restart peut rester coincé jusqu’au SIGKILL).
 
-**Codé, à valider robot (2026-08-28) :** accueil = état bus STS + tension moyenne (`type: status`). APK **1.3.6**.
+**FAIT robot (2026-08-28, PO) :** accueil = état bus STS + tension moyenne (`type: status`). **STS OK · 7,7 V**. APK **1.3.8**.
 
 **Pas encore :** vidéo (D-022, hors BLE).
 
