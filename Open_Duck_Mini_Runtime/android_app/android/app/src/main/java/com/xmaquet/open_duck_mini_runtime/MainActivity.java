@@ -357,6 +357,16 @@ public class MainActivity extends BridgeActivity {
       projectorOn = !projectorOn;
     } else if ("speaker".equals(action) && sound != null) {
       lastSound = sound;
+      int gen = testsGen;
+      String played = sound;
+      txHandler.postDelayed(
+          () -> {
+            if (gen == testsGen && current == Screen.TESTS && played.equals(lastSound)) {
+              lastSound = "";
+              paintSoundButtons();
+            }
+          },
+          2000);
     } else if ("antennas_wiggle".equals(action) || "antennas_pulse".equals(action)) {
       paintAntenna(action, true);
       int gen = testsGen;
