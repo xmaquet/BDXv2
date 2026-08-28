@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import time
 
+BLE_READY_SOUND = "BLE_OKAY_mini_BDX.wav"
+
 
 def run_boot_hello() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
@@ -43,7 +45,19 @@ def _wiggle_four() -> None:
         print(f"[boot_hello] antennes : {e}", flush=True)
 
 
+def run_ble_ready_sound() -> None:
+    """Joué dès que la pub BLE est active (en attente de connexion Android)."""
+    os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    os.environ.setdefault("SDL_AUDIODRIVER", "alsa")
+    print(f"[boot_hello] BLE prêt → {BLE_READY_SOUND}", flush=True)
+    _play_wav(BLE_READY_SOUND)
+
+
 def _play_happy1() -> None:
+    _play_wav("happy1.wav")
+
+
+def _play_wav(name: str) -> None:
     try:
         from mini_bdx_runtime.sounds import Sounds, default_assets_directory
 
@@ -51,8 +65,8 @@ def _play_happy1() -> None:
         if not getattr(sounds, "ok", False):
             print("[boot_hello] haut-parleur indisponible", flush=True)
             return
-        sounds.play("happy1.wav")
-        clip = sounds.sounds.get("happy1.wav")
+        sounds.play(name)
+        clip = sounds.sounds.get(name)
         wait = 1.5
         if clip is not None:
             try:
@@ -61,7 +75,7 @@ def _play_happy1() -> None:
                 pass
         time.sleep(wait)
     except Exception as e:
-        print(f"[boot_hello] son : {e}", flush=True)
+        print(f"[boot_hello] son ({name}) : {e}", flush=True)
 
 
 if __name__ == "__main__":

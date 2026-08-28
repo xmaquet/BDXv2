@@ -64,6 +64,17 @@ def _try_apply_json_frames(
     buf.clear()
 
 
+def _spawn_ble_ready_sound() -> None:
+    """Signal audio : BLE annoncé, en attente de connexion tablette."""
+    try:
+        from mini_bdx_runtime.boot_hello import run_ble_ready_sound
+
+        run_ble_ready_sound()
+        print("[ble_gatt] BLE ready sound: fin", flush=True)
+    except Exception as e:
+        print(f"[ble_gatt] BLE ready sound: échec {e}", flush=True)
+
+
 def _spawn_boot_hello() -> None:
     """Hello dans le même process que le GATT, après pause (GPIO/I2S au boot)."""
     time.sleep(10.0)
@@ -276,6 +287,9 @@ def main() -> None:
             "[ble_gatt] Publicité + service enregistrés. Connecte la tablette (scan filtré sur ce service UUID).",
             flush=True,
         )
+        threading.Thread(
+            target=_spawn_ble_ready_sound, name="ble_ready_sound", daemon=True
+        ).start()
         srv._prepare_rx()
         shared_sts.start()
 
