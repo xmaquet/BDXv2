@@ -1,8 +1,8 @@
 import time
 
 import numpy as np
-import rustypot
 from mini_bdx_runtime.duck_config import DuckConfig
+from mini_bdx_runtime.feetech_io import open_feetech_io
 
 
 class HWI:
@@ -74,7 +74,7 @@ class HWI:
         self.kds = np.ones(len(self.joints)) * 0  # default kd
         self.low_torque_kps = np.ones(len(self.joints)) * 2
 
-        self.io = rustypot.feetech(usb_port, 1000000)
+        self.io = open_feetech_io(usb_port, 1000000)
 
     def set_kps(self, kps):
         self.kps = kps
