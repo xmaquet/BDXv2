@@ -172,6 +172,16 @@ bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_halt_sudo.sh
 
 Filet : SSH `sudo poweroff`. À intégrer plus tard dans l’install complète (D-012).
 
+### État robot (accueil)
+
+Télémétrie **lente** (notification RX ~1 s, pas un `ControllerFrame`). Tension = moyenne des STS qui répondent. Si la valeur brute servo est > 20, elle est convertie × 0,1 V. Le bus est `ok` (14/14), `partial` (1…13), ou `down` (0 / pas de port / lib absente).
+
+```json
+{ "type": "status", "v": 1, "sts_bus": "ok", "sts_ok": 14, "sts_n": 14, "bus_v": 7.6 }
+```
+
+`bus_v` est `null` si aucune tension lisible. L’accueil affiche **—** si le BLE est coupé.
+
 ### Tests accessoires (D-018)
 
 Message **dédié**, **pas** un `ControllerFrame`. Aligné banc SSH (yeux, projecteur, HP, antennes), **sans marche**.

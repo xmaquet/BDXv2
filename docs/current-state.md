@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-27 (D-021 halt).
+Dernière mise à jour : 2026-08-28 (accueil STS).
 
 ## Situation du projet
 
@@ -35,7 +35,9 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 **D-022 :** surface produit = **UI Android native** (accueil à menus). WebView Capacitor / proto Figma **abandonnés** comme UI. `android_ui/` gelé.
 
-**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** joue au lancement de `bdx-ble-robot` (sous-processus). Autostart Linux : `scripts/enable_ble_robot_boot.sh` (une fois).
+**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** joue au lancement de `bdx-ble-robot` **dans le process GATT** (in-process). Autostart Linux : `scripts/enable_ble_robot_boot.sh` (une fois).
+
+**Codé, à valider robot (2026-08-28) :** accueil = état bus STS + tension moyenne (`type: status`). APK **1.3.6**.
 
 **Pas encore :** vidéo (D-022, hors BLE).
 

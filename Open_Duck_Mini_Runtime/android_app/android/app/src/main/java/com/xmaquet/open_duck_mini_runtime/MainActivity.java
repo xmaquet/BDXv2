@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
 import org.json.JSONObject;
+import java.util.Locale;
 
 public class MainActivity extends BridgeActivity {
   private static final int REQ_BLE = 42;
@@ -56,7 +57,12 @@ public class MainActivity extends BridgeActivity {
   private RobotBlePlugin ble;
   private TextView statusView;
   private TextView rxLine;
+  private TextView homeSts;
   private TextView testsHint;
+  private String lastStsBus;
+  private int lastStsOk;
+  private int lastStsN = 14;
+  private double lastBusV = Double.NaN;
   private TextView shutdownResult;
   private Button shutdownSend;
   private CheckBox shutdownConfirm;
@@ -194,6 +200,8 @@ public class MainActivity extends BridgeActivity {
     view.findViewById(R.id.home_video).setOnClickListener(v -> showScreen(Screen.VIDEO));
     TextView version = view.findViewById(R.id.home_version);
     version.setText(BuildConfig.VERSION_NAME);
+    homeSts = view.findViewById(R.id.home_sts);
+    paintHomeSts();
   }
 
   private void bindPilot() {
@@ -469,6 +477,7 @@ public class MainActivity extends BridgeActivity {
   private void clearBindings() {
     statusView = null;
     rxLine = null;
+    homeSts = null;
     testsHint = null;
     shutdownResult = null;
     shutdownSend = null;
@@ -570,11 +579,14 @@ public class MainActivity extends BridgeActivity {
   private void disconnectBle() {
     connecting = false;
     connected = false;
+    lastStsBus = null;
+    lastBusV = Double.NaN;
     if (ble != null) {
       ble.disconnectNative();
     }
     refreshBleBanner();
     refreshPilotStatus();
+    paintHomeSts();
   }
 
   private void onBleStatus(boolean isConnected) {
@@ -583,9 +595,12 @@ public class MainActivity extends BridgeActivity {
           connected = isConnected;
           if (!isConnected) {
             connecting = false;
+            lastStsBus = null;
+            lastBusV = Double.NaN;
           }
           refreshBleBanner();
           refreshPilotStatus();
+          paintHomeSts();
         });
   }
 
@@ -595,8 +610,57 @@ public class MainActivity extends BridgeActivity {
           if (rxLine != null) {
             rxLine.setText(text);
           }
+          applyStatusRx(text);
           applyTestRx(text);
         });
+  }
+
+  private void applyStatusRx(String text) {
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject(text);
+      if (!"status".equals(o.optString("type"))) {
+        return;
+      }
+      lastStsBus = o.optString("sts_bus", "down");
+      lastStsOk = o.optInt("sts_ok", 0);
+      lastStsN = o.optInt("sts_n", 14);
+      if (o.has("bus_v") && !o.isNull("bus_v")) {
+        lastBusV = o.optDouble("bus_v");
+      } else {
+        lastBusV = Double.NaN;
+      }
+      paintHomeSts();
+    } catch (Exception ignored) {
+    }
+  }
+
+  private void paintHomeSts() {
+    if (homeSts == null) {
+      return;
+    }
+    int muted = ContextCompat.getColor(this, R.color.bs_muted);
+    if (!connected || lastStsBus == null) {
+      homeSts.setText("Bus STS —");
+      homeSts.setTextColor(muted);
+      return;
+    }
+    String volts =
+        Double.isNaN(lastBusV)
+            ? "—"
+            : String.format(Locale.FRANCE, "%.1f V", lastBusV);
+    if ("ok".equals(lastStsBus)) {
+      homeSts.setText("STS OK · " + volts);
+      homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_green));
+    } else if ("partial".equals(lastStsBus)) {
+      homeSts.setText("STS " + lastStsOk + "/" + lastStsN + " · " + volts);
+      homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_yellow));
+    } else {
+      homeSts.setText("STS hors bus · —");
+      homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_red));
+    }
   }
 
   private void applyTestRx(String text) {

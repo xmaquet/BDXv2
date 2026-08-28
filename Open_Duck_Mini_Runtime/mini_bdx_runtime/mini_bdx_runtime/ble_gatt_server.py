@@ -121,18 +121,28 @@ def main() -> None:
     from mini_bdx_runtime.xbox_bridge import AndroidBridgeController, VirtualJoystickState
     from mini_bdx_runtime.ble_test_actions import AccessoryTests
     from mini_bdx_runtime.ble_halt import SystemHalt
+    from mini_bdx_runtime.sts_bus import StsBusMonitor
 
     shared_virtual = VirtualJoystickState()
     shared_tests = AccessoryTests()
     shared_halt = SystemHalt()
+    shared_sts = StsBusMonitor()
+    shared_sts.start()
 
     class RobotDuckGattService(Service):
         """Service unique : TX (write JSON), RX (notify + read)."""
 
-        def __init__(self, v: VirtualJoystickState, tests: AccessoryTests, halt: SystemHalt) -> None:
+        def __init__(
+            self,
+            v: VirtualJoystickState,
+            tests: AccessoryTests,
+            halt: SystemHalt,
+            sts: StsBusMonitor,
+        ) -> None:
             self.virtual = v
             self.tests = tests
             self.halt = halt
+            self.sts = sts
             self._tx_buf = bytearray()
             self._rx_value = b'{"type":"log","level":"info","message":"idle"}'
             super().__init__(SERVICE_UUID, True)
@@ -175,6 +185,12 @@ def main() -> None:
                     payload.setdefault("ts_ms", int(time.time() * 1000))
                     self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
                     return
+            snap = self.sts.snapshot() if self.sts is not None else None
+            if snap:
+                payload = dict(snap)
+                payload.setdefault("ts_ms", int(time.time() * 1000))
+                self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+                return
             result = getattr(self.tests, "last_result", "") or ""
             if result:
                 self.tests.last_result = ""
@@ -231,7 +247,7 @@ def main() -> None:
         except Exception as e:
             print(f"[ble_gatt] Impossible d’allumer l’adaptateur ({e}).", file=sys.stderr)
 
-        srv = RobotDuckGattService(shared_virtual, shared_tests, shared_halt)
+        srv = RobotDuckGattService(shared_virtual, shared_tests, shared_halt, shared_sts)
         await srv.register(bus, adapter=adapter)
 
         if not args.no_agent:
