@@ -14,6 +14,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
+import subprocess
 import sys
 import threading
 import time
@@ -62,6 +64,23 @@ def _try_apply_json_frames(
         while idx < len(text) and text[idx].isspace():
             idx += 1
     buf.clear()
+
+
+def _spawn_boot_hello() -> None:
+    """Sous-processus : un plantage GPIO/pygame ne doit pas tuer le GATT."""
+    time.sleep(1.0)
+    env = os.environ.copy()
+    env.setdefault("SDL_VIDEODRIVER", "dummy")
+    env.setdefault("SDL_AUDIODRIVER", "alsa")
+    try:
+        subprocess.Popen(
+            [sys.executable, "-m", "mini_bdx_runtime.boot_hello"],
+            env=env,
+            start_new_session=True,
+        )
+        print("[ble_gatt] séquence de démarrage lancée", flush=True)
+    except Exception as e:
+        print(f"[ble_gatt] hello non lancé ({e})", flush=True)
 
 
 def main() -> None:
@@ -245,9 +264,7 @@ def main() -> None:
         srv._prepare_rx()
 
         if not args.no_hello:
-            from mini_bdx_runtime.boot_hello import run_boot_hello
-
-            threading.Thread(target=run_boot_hello, name="boot_hello", daemon=True).start()
+            threading.Thread(target=_spawn_boot_hello, name="boot_hello", daemon=True).start()
 
         if args.dump:
 

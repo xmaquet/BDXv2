@@ -107,7 +107,7 @@ Le **live tablette d’abord**. Les séquences suivent, dans la même phase prod
 
 **Précision D-010 :** le live se matérialise d’abord par le **mode test** (fonctions une à une). Les « séquences » ne sont pas le mode normal : le mode normal = expressions **pendant** la marche, comme les scripts d’origine.
 
-**Avancement (2026-08-27) :** première séquence = **hello au démarrage** de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`). Contournement : `--no-hello`.
+**Avancement (2026-08-27) :** première séquence = **hello au démarrage** de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`). Contournement : `--no-hello`. Autostart boot : `scripts/enable_ble_robot_boot.sh`.
 
 ---
 

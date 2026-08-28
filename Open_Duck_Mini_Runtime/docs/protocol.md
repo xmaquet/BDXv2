@@ -112,7 +112,7 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 | `No matching distribution found for bluez-peripheral>=1` | Ancienne contrainte erronée (PyPI n’a pas de 1.x) | `git pull` le fork à jour (`>=0.1.7,<0.2`) |
 | `cannot import name 'Service' from 'bluez_peripheral.gatt'` | API 0.1.7 : `Service` est dans `gatt.service` | Mettre à jour `ble_gatt_server.py` depuis la branche du fork |
 | `InterfaceNotFoundError: org.bluez.Adapter1` | BlueZ 5.8x : sous `/org/bluez`, certains nœuds ne sont pas des adaptateurs HCI | Version récente du serveur qui **filtre** les objets sans `Adapter1`, ou lancer avec **`--dbus-adapter /org/bluez/hci0`** |
-| Bluetooth éteint | Adaptateur non alimenté | `bluetoothctl power on` |
+| Bluetooth éteint / tablette « BLE ÉCHEC » et pas de hello | `bdx-ble-robot` pas lancé (allumage seul insuffisant) | `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_ble_robot.sh --dump` ou autostart `enable_ble_robot_boot.sh` |
 | Pairing / agent | Droits D-Bus | `sudo usermod -aG bluetooth $USER` + reconnexion ; ou `--no-agent` si déjà appairé |
 | Avertissement ONNX « GPU device discovery failed » sur Pi | Import `onnxruntime` ailleurs dans la chaîne | Sans impact sur le BLE ; ignorer ou retarder l’import ONNX si les logs gênent |
 
@@ -126,7 +126,15 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 - **`--no-hello`** : ne pas jouer la séquence de démarrage.
 - **`--dbus-adapter PATH`** : chemin D-Bus explicite de l’adaptateur (ex. `/org/bluez/hci0`).
 
-Au lancement de `bdx-ble-robot` (sauf `--no-hello`) : 3 clignements des yeux, 4 oscillations d’antennes, puis `happy1.wav`. Ce n’est pas un `ControllerFrame` ni un test tablette. Pour Linux `@reboot` / systemd : plus tard, quand le GATT sera autostarté.
+Au lancement de `bdx-ble-robot` (sauf `--no-hello`) : 3 clignements des yeux, 4 oscillations d’antennes, puis `happy1.wav`. La séquence est un **sous-processus** (un plantage accessoires ne coupe pas le BLE).
+
+Allumage du Pi : le GATT **n’était pas** autostarté. Une fois, hors `pi-setup/install.sh` :
+
+```bash
+bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_ble_robot_boot.sh
+```
+
+Ensuite un reboot joue le hello et annonce le BLE. Lancement manuel : `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_ble_robot.sh --dump`. Ne pas lancer deux instances à la fois.
 
 ## Messages hors ControllerFrame
 

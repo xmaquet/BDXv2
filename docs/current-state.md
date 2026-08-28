@@ -35,7 +35,7 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 **D-022 :** surface produit = **UI Android native** (accueil à menus). WebView Capacitor / proto Figma **abandonnés** comme UI. `android_ui/` gelé.
 
-**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** à chaque lancement de `bdx-ble-robot` (yeux ×3, antennes ×4, `happy1`).
+**FAIT banc (2026-08-27) :** APK native ; scan/connexion GATT ; TX `ControllerFrame` ; RX notify après CCCD (cache GATT : rediscovery générique). Pas de manette Xbox (D-018). **Tests** accessoires actionnables (sons nommés, style actif). **Halt** : contrat figé, envoi UI + `poweroff` Pi (sudoers une fois via `enable_halt_sudo.sh`). **Hello boot :** joue au lancement de `bdx-ble-robot` (sous-processus). Autostart Linux : `scripts/enable_ble_robot_boot.sh` (une fois).
 
 **Pas encore :** vidéo (D-022, hors BLE).
 
