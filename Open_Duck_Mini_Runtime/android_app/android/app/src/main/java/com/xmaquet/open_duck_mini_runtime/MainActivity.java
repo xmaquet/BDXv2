@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import org.json.JSONArray;
 import androidx.core.app.ActivityCompat;
@@ -62,7 +63,7 @@ public class MainActivity extends BridgeActivity {
   private TextView statusView;
   private TextView rxLine;
   private TextView homeSts;
-  private GridLayout homeStsBadges;
+  private LinearLayout homeStsBadges;
   private TextView testsHint;
   private String lastStsBus;
   private String lastStsMsg = "";
@@ -730,22 +731,21 @@ public class MainActivity extends BridgeActivity {
       return;
     }
     float d = getResources().getDisplayMetrics().density;
-    int pad = Math.round(3 * d);
-    int min = Math.round(36 * d);
+    int padH = Math.round(6 * d);
+    int padV = Math.round(2 * d);
+    int gap = Math.round(4 * d);
     for (int id : STS_BADGE_IDS) {
       TextView b = new TextView(this);
       b.setText(String.valueOf(id));
       b.setGravity(android.view.Gravity.CENTER);
       b.setTextSize(12);
       b.setTypeface(b.getTypeface(), android.graphics.Typeface.BOLD);
-      b.setMinWidth(min);
-      b.setMinHeight(min);
-      b.setPadding(pad, pad, pad, pad);
-      GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
-      lp.width = 0;
-      lp.height = GridLayout.LayoutParams.WRAP_CONTENT;
-      lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-      lp.setMargins(pad, pad, pad, pad);
+      b.setIncludeFontPadding(false);
+      b.setPadding(padH, padV, padH, padV);
+      LinearLayout.LayoutParams lp =
+          new LinearLayout.LayoutParams(
+              LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+      lp.setMargins(0, 0, gap, 0);
       b.setLayoutParams(lp);
       b.setTag(id);
       homeStsBadges.addView(b);
