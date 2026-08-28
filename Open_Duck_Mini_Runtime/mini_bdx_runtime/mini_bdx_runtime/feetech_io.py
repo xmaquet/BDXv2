@@ -12,6 +12,14 @@ def _as_list(values: Iterable[Any]) -> List[Any]:
     return list(values)
 
 
+def _as_int_list(values: Iterable[Any]) -> List[int]:
+    return [int(v) for v in values]
+
+
+def _as_float_list(values: Iterable[Any]) -> List[float]:
+    return [float(v) for v in values]
+
+
 class _Sts3215Adapter:
     """Wrap Sts3215PyController with the legacy HWI method names."""
 
@@ -19,26 +27,26 @@ class _Sts3215Adapter:
         self._c = controller
 
     def set_kps(self, ids, kps):
-        self._c.sync_write_p_coefficient(_as_list(ids), _as_list(kps))
+        self._c.sync_write_p_coefficient(_as_int_list(ids), _as_int_list(kps))
 
     def set_kds(self, ids, kds):
-        self._c.sync_write_d_coefficient(_as_list(ids), _as_list(kds))
+        self._c.sync_write_d_coefficient(_as_int_list(ids), _as_int_list(kds))
 
     def write_goal_position(self, ids, positions):
-        self._c.sync_write_goal_position(_as_list(ids), _as_list(positions))
+        self._c.sync_write_goal_position(_as_int_list(ids), _as_float_list(positions))
 
     def read_present_position(self, ids):
-        return list(self._c.sync_read_present_position(_as_list(ids)))
+        return list(self._c.sync_read_present_position(_as_int_list(ids)))
 
     def read_present_velocity(self, ids):
-        return list(self._c.sync_read_present_velocity(_as_list(ids)))
+        return list(self._c.sync_read_present_velocity(_as_int_list(ids)))
 
     def disable_torque(self, ids):
-        ids = _as_list(ids)
+        ids = _as_int_list(ids)
         self._c.sync_write_torque_enable(ids, [False] * len(ids))
 
     def enable_torque(self, ids):
-        ids = _as_list(ids)
+        ids = _as_int_list(ids)
         self._c.sync_write_torque_enable(ids, [True] * len(ids))
 
 
