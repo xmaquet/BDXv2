@@ -18,6 +18,13 @@ if [[ ! -f "${RUNTIME}/.venv/bin/bdx-ble-robot" ]]; then
   exit 1
 fi
 
+# Télémétrie STS (accueil) : pyserial, pas l’extra hardware / pas install.sh (D-020).
+if ! "${RUNTIME}/.venv/bin/python" -c "import serial" >/dev/null 2>&1; then
+  echo "Installation de pyserial dans le venv…"
+  "${RUNTIME}/.venv/bin/pip" install -q "pyserial>=3.5"
+fi
+sudo usermod -aG dialout,plugdev "$(id -un)" || true
+
 UNIT="$(mktemp)"
 trap 'rm -f "${UNIT}"' EXIT
 cat > "${UNIT}" <<EOF

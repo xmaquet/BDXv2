@@ -9,7 +9,8 @@ from typing import Any
 
 STS_IDS = (20, 21, 22, 23, 24, 30, 31, 32, 33, 10, 11, 12, 13, 14)
 PORTS = ("/dev/ttyACM0", "/dev/ttyUSB0")
-SERIAL_TIMEOUT_S = 0.05
+SERIAL_TIMEOUT_S = 0.03
+VOLTAGE_ADDR = 62  # present voltage, unité 0,1 V
 VOLT_METHODS = (
     "sync_read_present_voltage",
     "get_present_voltage",
@@ -56,6 +57,79 @@ def _flatten_numbers(raw: Any) -> list[Any]:
     return out
 
 
+class _FeetechSerial:
+    """Lecture tension STS en protocole Feetech v1, sans rustypot/pypot."""
+
+    def __init__(self, port: str) -> None:
+        import serial
+
+        self._ser = serial.Serial(
+            port=port,
+            baudrate=1_000_000,
+            timeout=SERIAL_TIMEOUT_S,
+            write_timeout=SERIAL_TIMEOUT_S,
+        )
+
+    def close(self) -> None:
+        try:
+            self._ser.close()
+        except Exception:
+            pass
+
+    def get_present_voltage(self, ids: list[int]) -> list[Any]:
+        probe_ok = False
+        for sid in (20, 10):
+            if self._read_u8(sid, VOLTAGE_ADDR) is not None:
+                probe_ok = True
+                break
+        if not probe_ok:
+            return []
+        out: list[Any] = []
+        for sid in ids:
+            raw = self._read_u8(sid, VOLTAGE_ADDR)
+            if raw is not None:
+                out.append(raw)
+        return out
+
+    def _read_u8(self, sid: int, addr: int) -> int | None:
+        payload = bytes((sid, 4, 2, addr, 1))
+        pkt = b"\xff\xff" + payload + bytes(((~sum(payload)) & 0xFF,))
+        ser = self._ser
+        try:
+            ser.reset_input_buffer()
+            ser.write(pkt)
+            data = ser.read(8)
+        except Exception:
+            return None
+        for _ in range(4):
+            i = data.find(b"\xff\xff")
+            if i < 0 or len(data) < i + 6:
+                extra = ser.read(8)
+                if not extra:
+                    return None
+                data += extra
+                continue
+            length = data[i + 3]
+            if length == 4:
+                data = data[i + 8 :]
+                if len(data) < 6:
+                    extra = ser.read(8)
+                    if not extra:
+                        return None
+                    data += extra
+                continue
+            need = i + 4 + length
+            if len(data) < need:
+                extra = ser.read(need - len(data))
+                if not extra:
+                    return None
+                data += extra
+            if data[i + 2] != sid or length < 3:
+                return None
+            return data[i + 5]
+        return None
+
+
 class StsBusMonitor:
     def __init__(self, interval_s: float = 2.0) -> None:
         self.interval_s = interval_s
@@ -67,10 +141,12 @@ class StsBusMonitor:
             "sts_ok": 0,
             "sts_n": len(STS_IDS),
             "bus_v": None,
+            "sts_msg": "no_lib",
         }
         self._io: Any = None
         self._stop = threading.Event()
         self._logged_reason = ""
+        self._down_code = "no_lib"
         self._ready = threading.Event()
 
     def snapshot(self) -> dict[str, Any]:
@@ -81,7 +157,7 @@ class StsBusMonitor:
         self._ready.set()
         threading.Thread(target=self._loop, name="sts_bus", daemon=True).start()
 
-    def _set(self, bus: str, ok: int, voltage: float | None) -> None:
+    def _set(self, bus: str, ok: int, voltage: float | None, msg: str = "") -> None:
         with self._lock:
             self._snapshot = {
                 "type": "status",
@@ -90,6 +166,7 @@ class StsBusMonitor:
                 "sts_ok": ok,
                 "sts_n": len(STS_IDS),
                 "bus_v": None if voltage is None else round(voltage, 2),
+                "sts_msg": msg,
             }
 
     def _log_once(self, reason: str) -> None:
@@ -105,19 +182,26 @@ class StsBusMonitor:
                 ok, volts = self._read()
             except Exception as e:
                 self._drop_io()
-                self._set("down", 0, None)
+                self._set("down", 0, None, "no_reply")
                 self._log_once(f"lecture impossible: {e}")
             else:
                 n = len(STS_IDS)
                 mean = (sum(volts) / len(volts)) if volts else None
                 if ok == 0:
-                    self._set("down", 0, None)
-                    self._log_once("aucun servo ne répond")
+                    self._set("down", 0, None, self._down_code)
+                    self._log_once(
+                        {
+                            "no_lib": "pyserial/rustypot/pypot absents",
+                            "no_port": "pas de port série STS (/dev/ttyACM0)",
+                            "no_perm": "accès série refusé (groupe dialout)",
+                            "no_reply": "aucun servo ne répond",
+                        }.get(self._down_code, self._down_code)
+                    )
                 elif ok < n:
-                    self._set("partial", ok, mean)
+                    self._set("partial", ok, mean, "")
                     self._logged_reason = ""
                 else:
-                    self._set("ok", ok, mean)
+                    self._set("ok", ok, mean, "")
                     self._logged_reason = ""
             if self._stop.wait(self.interval_s):
                 break
@@ -139,6 +223,7 @@ class StsBusMonitor:
         if present:
             self._log_once("bus répond, tension illisible")
             return len(present), []
+        self._down_code = "no_reply"
         return 0, []
 
     def _bulk(self, io: Any, names: tuple[str, ...]) -> list[Any]:
@@ -182,24 +267,46 @@ class StsBusMonitor:
             return self._io
         port = next((p for p in PORTS if os.path.exists(p)), None)
         if port is None:
+            self._down_code = "no_port"
             self._log_once("pas de port série STS (/dev/ttyACM0)")
             return None
         errors: list[str] = []
-        for opener in (self._open_rustypot_feetech, self._open_sts_controller, self._open_pypot):
+        for opener in (
+            self._open_pyserial,
+            self._open_sts_controller,
+            self._open_rustypot_feetech,
+            self._open_pypot,
+        ):
             try:
                 io = opener(port)
+            except PermissionError as e:
+                self._down_code = "no_perm"
+                errors.append(f"{opener.__name__}: {e}")
+                continue
             except Exception as e:
+                text = str(e).lower()
+                if "permission" in text or "denied" in text:
+                    self._down_code = "no_perm"
                 errors.append(f"{opener.__name__}: {e}")
                 continue
             if io is None:
                 continue
             self._io = io
             return io
-        if errors:
+        if not errors:
+            self._down_code = "no_lib"
+            self._log_once("pyserial/rustypot/pypot absents du venv")
+        elif self._down_code != "no_perm":
+            self._down_code = "no_lib"
             self._log_once("ouverture " + port + " échouée (" + "; ".join(errors) + ")")
         else:
-            self._log_once("pypot/rustypot absents du venv (extra hardware)")
+            self._log_once("accès série refusé (groupe dialout)")
         return None
+
+    def _open_pyserial(self, port: str) -> Any:
+        io = _FeetechSerial(port)
+        self._log_once(f"ouvert {port} (pyserial)")
+        return io
 
     def _open_rustypot_feetech(self, port: str) -> Any:
         import rustypot
@@ -207,7 +314,7 @@ class StsBusMonitor:
         if not hasattr(rustypot, "feetech"):
             return None
         try:
-            io = rustypot.feetech(port, 1_000_000, timeout=SERIAL_TIMEOUT_S)
+            io = rustypot.feetech(port, 1_000_000, timeout=0.1)
         except TypeError:
             io = rustypot.feetech(port, 1_000_000)
         self._log_once(f"ouvert {port} (rustypot.feetech)")
@@ -219,7 +326,7 @@ class StsBusMonitor:
         cls = getattr(rustypot, "Sts3215PyController", None)
         if cls is None:
             return None
-        io = cls(serial_port=port, baudrate=1_000_000, timeout=SERIAL_TIMEOUT_S)
+        io = cls(serial_port=port, baudrate=1_000_000, timeout=0.1)
         self._log_once(f"ouvert {port} (Sts3215PyController)")
         return io
 
@@ -231,7 +338,7 @@ class StsBusMonitor:
                 port,
                 baudrate=1_000_000,
                 use_sync_read=True,
-                timeout=SERIAL_TIMEOUT_S,
+                timeout=0.1,
             )
         except TypeError:
             io = FeetechSTS3215IO(port, baudrate=1_000_000, use_sync_read=True)

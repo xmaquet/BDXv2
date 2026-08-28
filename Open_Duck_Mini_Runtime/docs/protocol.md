@@ -177,10 +177,12 @@ Filet : SSH `sudo poweroff`. À intégrer plus tard dans l’install complète (
 Télémétrie **lente** (notification RX ~1 s, pas un `ControllerFrame`). Tension = moyenne des STS qui répondent. Si la valeur brute servo est > 20, elle est convertie × 0,1 V. Le bus est `ok` (14/14), `partial` (1…13), ou `down` (0 / pas de port / lib absente).
 
 ```json
-{ "type": "status", "v": 1, "sts_bus": "ok", "sts_ok": 14, "sts_n": 14, "bus_v": 7.6 }
+{ "type": "status", "v": 1, "sts_bus": "ok", "sts_ok": 14, "sts_n": 14, "bus_v": 7.6, "sts_msg": "" }
 ```
 
 `bus_v` est `null` si aucune tension lisible. L’accueil affiche **—** si le BLE est coupé.
+
+`sts_msg` si `sts_bus` est `down` : `no_lib` (pyserial/rustypot absents), `no_port` (pas d’adaptateur USB), `no_perm` (groupe `dialout`), `no_reply` (servos muets / pas de VIN).
 
 ### Tests accessoires (D-018)
 

@@ -60,6 +60,7 @@ public class MainActivity extends BridgeActivity {
   private TextView homeSts;
   private TextView testsHint;
   private String lastStsBus;
+  private String lastStsMsg = "";
   private int lastStsOk;
   private int lastStsN = 14;
   private double lastBusV = Double.NaN;
@@ -580,6 +581,7 @@ public class MainActivity extends BridgeActivity {
     connecting = false;
     connected = false;
     lastStsBus = null;
+    lastStsMsg = "";
     lastBusV = Double.NaN;
     if (ble != null) {
       ble.disconnectNative();
@@ -596,6 +598,7 @@ public class MainActivity extends BridgeActivity {
           if (!isConnected) {
             connecting = false;
             lastStsBus = null;
+            lastStsMsg = "";
             lastBusV = Double.NaN;
           }
           refreshBleBanner();
@@ -627,6 +630,7 @@ public class MainActivity extends BridgeActivity {
       lastStsBus = o.optString("sts_bus", "down");
       lastStsOk = o.optInt("sts_ok", 0);
       lastStsN = o.optInt("sts_n", 14);
+      lastStsMsg = o.optString("sts_msg", "");
       if (o.has("bus_v") && !o.isNull("bus_v")) {
         lastBusV = o.optDouble("bus_v");
       } else {
@@ -658,7 +662,19 @@ public class MainActivity extends BridgeActivity {
       homeSts.setText("STS " + lastStsOk + "/" + lastStsN + " · " + volts);
       homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_yellow));
     } else {
-      homeSts.setText("STS hors bus · —");
+      String why;
+      if ("no_lib".equals(lastStsMsg)) {
+        why = "bibliothèque absente";
+      } else if ("no_port".equals(lastStsMsg)) {
+        why = "pas d’adaptateur";
+      } else if ("no_perm".equals(lastStsMsg)) {
+        why = "accès série";
+      } else if ("no_reply".equals(lastStsMsg)) {
+        why = "servos muets";
+      } else {
+        why = "—";
+      }
+      homeSts.setText("STS hors bus · " + why);
       homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_red));
     }
   }

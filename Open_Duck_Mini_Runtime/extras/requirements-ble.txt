@@ -2,3 +2,4 @@
 # Usage si « pip install -e ".[ble]" » signale que l’extra « ble » est inconnu (dépôt pas à jour) :
 #   pip install --no-cache-dir -r extras/requirements-ble.txt
 bluez-peripheral>=0.1.7,<0.2
+pyserial>=3.5
