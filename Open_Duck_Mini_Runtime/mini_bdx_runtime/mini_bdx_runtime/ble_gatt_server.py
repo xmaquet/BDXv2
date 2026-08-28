@@ -127,7 +127,6 @@ def main() -> None:
     shared_tests = AccessoryTests()
     shared_halt = SystemHalt()
     shared_sts = StsBusMonitor()
-    shared_sts.start()
 
     class RobotDuckGattService(Service):
         """Service unique : TX (write JSON), RX (notify + read)."""
@@ -278,6 +277,7 @@ def main() -> None:
             flush=True,
         )
         srv._prepare_rx()
+        shared_sts.start()
 
         if not args.no_hello:
             threading.Thread(target=_spawn_boot_hello, name="boot_hello", daemon=True).start()
@@ -294,7 +294,10 @@ def main() -> None:
 
         async def _echo_loop() -> None:
             while True:
-                await asyncio.sleep(1.0)
+                pending = getattr(shared_tests, "last_state", None) or getattr(
+                    shared_halt, "last_state", None
+                )
+                await asyncio.sleep(0.25 if pending else 1.0)
                 srv._prepare_rx()
                 try:
                     srv.rx_characteristic.changed(srv._rx_value)

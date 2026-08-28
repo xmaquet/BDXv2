@@ -30,6 +30,7 @@ Wants=bluetooth.service
 Type=simple
 User=bdxv2
 Group=bdxv2
+SupplementaryGroups=dialout plugdev
 Environment=HOME=/home/bdxv2
 Environment=PYTHONUNBUFFERED=1
 Environment=SDL_VIDEODRIVER=dummy
