@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -13,16 +14,19 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import org.json.JSONArray;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
 import org.json.JSONObject;
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class MainActivity extends BridgeActivity {
@@ -32,6 +36,8 @@ public class MainActivity extends BridgeActivity {
     HOME,
     PILOT,
     TESTS,
+    SETTINGS,
+    WIFI,
     SHUTDOWN,
     VIDEO
   }
@@ -87,6 +93,21 @@ public class MainActivity extends BridgeActivity {
   private boolean projectorOn;
   private String lastSound = "";
   private int testsGen;
+
+  private TextView wifiHint;
+  private TextView wifiSsidView;
+  private TextView wifiStateView;
+  private TextView wifiIpView;
+  private LinearLayout wifiList;
+  private Button wifiScan;
+  private boolean wifiScanning;
+  private int wifiScanGen;
+  private String lastWifiSsid;
+  private String lastWifiConnState;
+  private String lastWifiIp;
+  private int lastWifiRssi = Integer.MIN_VALUE;
+  private String lastWifiMessage = "";
+  private final ArrayList<JSONObject> lastWifiNets = new ArrayList<>();
 
   private VirtualStickView stickLeft;
   private VirtualStickView stickRight;
@@ -170,6 +191,10 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onBackPressed() {
+    if (current == Screen.WIFI) {
+      showScreen(Screen.SETTINGS);
+      return;
+    }
     if (current != Screen.HOME) {
       showScreen(Screen.HOME);
       return;
@@ -191,6 +216,12 @@ public class MainActivity extends BridgeActivity {
       case TESTS:
         bindTests();
         break;
+      case SETTINGS:
+        bindSettings();
+        break;
+      case WIFI:
+        bindWifi();
+        break;
       case SHUTDOWN:
         bindShutdown();
         break;
@@ -205,8 +236,9 @@ public class MainActivity extends BridgeActivity {
     screenContainer.addView(view);
     view.findViewById(R.id.home_pilot).setOnClickListener(v -> showScreen(Screen.PILOT));
     view.findViewById(R.id.home_tests).setOnClickListener(v -> showScreen(Screen.TESTS));
-    view.findViewById(R.id.home_shutdown).setOnClickListener(v -> showScreen(Screen.SHUTDOWN));
     view.findViewById(R.id.home_video).setOnClickListener(v -> showScreen(Screen.VIDEO));
+    view.findViewById(R.id.home_settings).setOnClickListener(v -> showScreen(Screen.SETTINGS));
+    view.findViewById(R.id.home_shutdown).setOnClickListener(v -> showScreen(Screen.SHUTDOWN));
     TextView version = view.findViewById(R.id.home_version);
     version.setText(BuildConfig.VERSION_NAME);
     homeSts = view.findViewById(R.id.home_sts);
@@ -257,6 +289,33 @@ public class MainActivity extends BridgeActivity {
     paintTestControls();
     if (connected) {
       sendTest("list_sounds");
+    }
+  }
+
+  private void bindSettings() {
+    View view = getLayoutInflater().inflate(R.layout.screen_settings, screenContainer, false);
+    screenContainer.addView(view);
+    view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
+    view.findViewById(R.id.settings_wifi).setOnClickListener(v -> showScreen(Screen.WIFI));
+  }
+
+  private void bindWifi() {
+    View view = getLayoutInflater().inflate(R.layout.screen_wifi, screenContainer, false);
+    screenContainer.addView(view);
+    view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.SETTINGS));
+    wifiHint = view.findViewById(R.id.wifi_hint);
+    wifiSsidView = view.findViewById(R.id.wifi_ssid);
+    wifiStateView = view.findViewById(R.id.wifi_state);
+    wifiIpView = view.findViewById(R.id.wifi_ip);
+    wifiList = view.findViewById(R.id.wifi_list);
+    wifiScan = view.findViewById(R.id.wifi_scan);
+    wifiScan.setOnClickListener(v -> sendWifi("scan"));
+    paintWifi();
+    if (connected) {
+      sendWifi("status");
+      sendWifi("scan");
+    } else if (wifiHint != null) {
+      wifiHint.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
     }
   }
 
@@ -349,6 +408,245 @@ public class MainActivity extends BridgeActivity {
       if (testsHint != null) {
         testsHint.setText("Envoi impossible");
       }
+    }
+  }
+
+  private void sendWifi(String action) {
+    if (ble == null || !connected || !ble.isLinkReady()) {
+      if (wifiHint != null) {
+        wifiHint.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
+      }
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject();
+      o.put("type", "wifi");
+      o.put("v", 1);
+      o.put("action", action);
+      ble.sendNative(o.toString());
+      if ("scan".equals(action)) {
+        wifiScanning = true;
+        final int gen = ++wifiScanGen;
+        if (wifiScan != null) {
+          wifiScan.setEnabled(false);
+          wifiScan.setText("Scan…");
+        }
+        if (wifiHint != null) {
+          wifiHint.setText("Recherche des réseaux 2,4 GHz…");
+        }
+        txHandler.postDelayed(
+            () -> {
+              if (wifiScanning && gen == wifiScanGen) {
+                wifiScanning = false;
+                if (lastWifiNets.isEmpty()) {
+                  lastWifiMessage =
+                      "Pas de réponse Wi‑Fi du robot. Firmware ou sudoers pas encore à jour ?";
+                }
+                paintWifi();
+              }
+            },
+            15000);
+      } else if (wifiHint != null) {
+        wifiHint.setText("Demande d’état envoyée.");
+      }
+    } catch (Exception e) {
+      if (wifiHint != null) {
+        wifiHint.setText("Envoi impossible");
+      }
+    }
+  }
+
+  private void sendWifiJoin(String ssid, String psk) {
+    if (ble == null || !connected || !ble.isLinkReady()) {
+      if (wifiHint != null) {
+        wifiHint.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
+      }
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject();
+      o.put("type", "wifi");
+      o.put("v", 1);
+      o.put("action", "join");
+      o.put("ssid", ssid);
+      o.put("confirm", true);
+      if (psk != null && !psk.isEmpty()) {
+        o.put("psk", psk);
+      }
+      ble.sendNative(o.toString());
+      lastWifiConnState = "connecting";
+      lastWifiSsid = ssid;
+      lastWifiMessage = "Association demandée…";
+      paintWifi();
+    } catch (Exception e) {
+      if (wifiHint != null) {
+        wifiHint.setText("Envoi impossible");
+      }
+    }
+  }
+
+  private void confirmJoin(String ssid, boolean needsPsk) {
+    AlertDialog.Builder b = new AlertDialog.Builder(this);
+    b.setTitle(ssid);
+    final EditText passwordField;
+    if (needsPsk) {
+      b.setMessage("Mot de passe du réseau. Il n’est pas stocké sur la tablette.");
+      LinearLayout box = new LinearLayout(this);
+      box.setOrientation(LinearLayout.VERTICAL);
+      int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+      box.setPadding(pad, pad / 2, pad, 0);
+      EditText password = new EditText(this);
+      password.setHint("Mot de passe");
+      password.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+      password.setTextColor(ContextCompat.getColor(this, R.color.bs_dark));
+      password.setHintTextColor(ContextCompat.getColor(this, R.color.bs_muted));
+      box.addView(password);
+      b.setView(box);
+      passwordField = password;
+    } else {
+      b.setMessage("Réseau ouvert. Confirmer l’association ?");
+      passwordField = null;
+    }
+    b.setNegativeButton("Annuler", null);
+    b.setPositiveButton(
+        "Connecter",
+        (d, w) -> {
+          String pass = passwordField == null ? "" : passwordField.getText().toString();
+          sendWifiJoin(ssid, pass);
+        });
+    b.show();
+  }
+
+  private void paintWifi() {
+    if (wifiSsidView != null) {
+      wifiSsidView.setText(
+          lastWifiSsid == null || lastWifiSsid.isEmpty() ? "Réseau —" : lastWifiSsid);
+    }
+    if (wifiStateView != null) {
+      wifiStateView.setText("État · " + wifiStateLabel(lastWifiConnState));
+    }
+    if (wifiIpView != null) {
+      String ip = lastWifiIp == null || lastWifiIp.isEmpty() ? "—" : lastWifiIp;
+      String sig =
+          lastWifiRssi == Integer.MIN_VALUE ? "—" : String.valueOf(lastWifiRssi);
+      wifiIpView.setText("IP " + ip + "  ·  signal " + sig);
+    }
+    if (wifiHint != null && lastWifiMessage != null && !lastWifiMessage.isEmpty()) {
+      wifiHint.setText(lastWifiMessage);
+    }
+    if (wifiScan != null) {
+      wifiScan.setEnabled(!wifiScanning && connected);
+      wifiScan.setText(wifiScanning ? "Scan…" : "Actualiser la liste");
+    }
+    paintWifiList();
+  }
+
+  private static String wifiStateLabel(String state) {
+    if ("connected".equals(state)) {
+      return "connecté";
+    }
+    if ("connecting".equals(state)) {
+      return "connexion…";
+    }
+    if ("failed".equals(state)) {
+      return "échec";
+    }
+    if ("disconnected".equals(state)) {
+      return "coupé";
+    }
+    return "—";
+  }
+
+  private void paintWifiList() {
+    if (wifiList == null) {
+      return;
+    }
+    wifiList.removeAllViews();
+    int gap = Math.round(8 * getResources().getDisplayMetrics().density);
+    for (int i = 0; i < lastWifiNets.size(); i++) {
+      JSONObject net = lastWifiNets.get(i);
+      String ssid = net.optString("ssid");
+      if (ssid.isEmpty()) {
+        continue;
+      }
+      View row = getLayoutInflater().inflate(R.layout.item_wifi_net, wifiList, false);
+      TextView name = row.findViewById(R.id.wifi_net_ssid);
+      TextView meta = row.findViewById(R.id.wifi_net_meta);
+      TextView badge = row.findViewById(R.id.wifi_net_badge);
+      name.setText(ssid);
+      boolean psk = "psk".equals(net.optString("sec"));
+      int rssi = net.optInt("rssi", 0);
+      meta.setText((psk ? "Sécurisé" : "Ouvert") + " · signal " + rssi);
+      boolean inUse = net.optBoolean("in_use");
+      badge.setVisibility(inUse ? View.VISIBLE : View.GONE);
+      LinearLayout.LayoutParams lp =
+          new LinearLayout.LayoutParams(
+              LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+      if (i > 0) {
+        lp.topMargin = gap;
+      }
+      row.setLayoutParams(lp);
+      row.setOnClickListener(v -> confirmJoin(ssid, psk));
+      wifiList.addView(row);
+    }
+  }
+
+  private void applyWifiRx(String text) {
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject(text);
+      String type = o.optString("type");
+      if ("wifi_ack".equals(type)) {
+        String message = o.optString("message");
+        boolean accepted = o.optBoolean("accepted");
+        if (!message.isEmpty()) {
+          lastWifiMessage = message;
+        }
+        if ("scan".equals(o.optString("action")) && !accepted) {
+          wifiScanning = false;
+        }
+        paintWifi();
+        return;
+      }
+      if ("wifi_state".equals(type)) {
+        lastWifiSsid = o.isNull("ssid") ? null : o.optString("ssid", null);
+        lastWifiConnState = o.optString("state", "");
+        lastWifiIp = o.isNull("ip") ? null : o.optString("ip", null);
+        if (o.has("rssi") && !o.isNull("rssi")) {
+          lastWifiRssi = o.optInt("rssi");
+        } else {
+          lastWifiRssi = Integer.MIN_VALUE;
+        }
+        lastWifiMessage = o.optString("message", lastWifiMessage);
+        paintWifi();
+        return;
+      }
+      if ("wifi_scan".equals(type)) {
+        int i = o.optInt("i", 0);
+        int n = o.optInt("n", 1);
+        if (i == 0) {
+          lastWifiNets.clear();
+        }
+        JSONArray nets = o.optJSONArray("nets");
+        if (nets != null) {
+          for (int k = 0; k < nets.length(); k++) {
+            JSONObject net = nets.optJSONObject(k);
+            if (net != null) {
+              lastWifiNets.add(net);
+            }
+          }
+        }
+        if (i >= n - 1) {
+          wifiScanning = false;
+          lastWifiMessage = lastWifiNets.isEmpty()
+              ? "Aucun réseau 2,4 GHz visible."
+              : lastWifiNets.size() + " réseaux";
+        }
+        paintWifi();
+      }
+    } catch (Exception ignored) {
     }
   }
 
@@ -510,6 +808,12 @@ public class MainActivity extends BridgeActivity {
     testAntWiggle = null;
     testAntPulse = null;
     testSounds = null;
+    wifiHint = null;
+    wifiSsidView = null;
+    wifiStateView = null;
+    wifiIpView = null;
+    wifiList = null;
+    wifiScan = null;
     stickLeft = null;
     stickRight = null;
     pause = false;
@@ -584,6 +888,10 @@ public class MainActivity extends BridgeActivity {
                   if (current == Screen.TESTS) {
                     sendTest("list_sounds");
                   }
+                  if (current == Screen.WIFI) {
+                    sendWifi("status");
+                    sendWifi("scan");
+                  }
                 }),
         err ->
             runOnUiThread(
@@ -605,12 +913,15 @@ public class MainActivity extends BridgeActivity {
     lastStsMsg = "";
     lastStsAliveKnown = false;
     lastBusV = Double.NaN;
+    wifiScanning = false;
+    lastWifiMessage = "BLE déconnecté.";
     if (ble != null) {
       ble.disconnectNative();
     }
     refreshBleBanner();
     refreshPilotStatus();
     paintHomeSts();
+    paintWifi();
   }
 
   private void onBleStatus(boolean isConnected) {
@@ -623,10 +934,13 @@ public class MainActivity extends BridgeActivity {
             lastStsMsg = "";
             lastStsAliveKnown = false;
             lastBusV = Double.NaN;
+            wifiScanning = false;
+            lastWifiMessage = "BLE déconnecté.";
           }
           refreshBleBanner();
           refreshPilotStatus();
           paintHomeSts();
+          paintWifi();
         });
   }
 
@@ -638,6 +952,7 @@ public class MainActivity extends BridgeActivity {
           }
           applyStatusRx(text);
           applyTestRx(text);
+          applyWifiRx(text);
         });
   }
 

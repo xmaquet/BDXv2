@@ -18,7 +18,7 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 ## Lire d’abord
 
 - `AGENTS.md`
-- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**, **D-020**, **D-021**)
+- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**, **D-020**, **D-021**, **D-022**, **D-023**)
 - `docs/next-lot.md` (lots 3 et 4)
 - `docs/current-state.md`
 - `Open_Duck_Mini_Runtime/docs/protocol.md` (contrat JSON + UUID GATT)
@@ -39,6 +39,7 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 - **D-011** : HAT 2N2222, GPIO d’origine (yeux D23/D24, projecteur D25, antennes PWM D12/D13). Polarité **active-high vérifiée** au banc SSH.
 - **D-020** : pas d’install complète Pi maintenant ; développer et tester sur le banc existant. Réinstall possible en fin de cycle.
 - **D-022** : UI produit **native** ; WebView / proto Figma abandonnés comme surface ; accueil à menus ; vidéo hors BLE, deux temps (affichage puis IA tablette).
+- **D-023** : carte **Paramètres** ; Wi‑Fi robot via BLE (`type: wifi`). Vidéo reste hors BLE. Deploy Pi = `enable_wifi_sudo.sh` + git pull, hors `pi-setup/install.sh`.
 - Tablette = **central BLE** ; Pi = **périphérique GATT**. Pas de Web Bluetooth dans la WebView.
 - `ControllerFrame` v1 peut rester le fil interne des commandes analogiques / boutons héritage ; l’UI ne doit **pas** ressembler à une Xbox. Évolution de protocole = mise à jour de `protocol.md`, pas silencieuse.
 

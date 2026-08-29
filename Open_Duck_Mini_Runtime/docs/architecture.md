@@ -9,7 +9,7 @@ Objectif : piloter le robot depuis une **tablette Android** avec une UI tactile 
 | **`android_app/`** | App **native** (layouts XML + `MainActivity`) : accueil à menus (D-022), plugin **RobotBlePlugin**. Capacitor n’est plus la surface UI ; il peut rester hôte du plugin. |
 | **`android_ui/`** | Proto React / Figma **gelé** (D-022). Ne plus y ajouter Tests, halt ni vidéo. |
 | **`android_app/.../RobotBlePlugin.kt`** | Scan / connexion / **écriture GATT** sur la caractéristique TX, **notifications** RX, permissions Android modernes, **watchdog natif** et **reconnexion** best-effort. |
-| **`mini_bdx_runtime/ble_gatt_server.py`** | Sur la **Raspberry Pi** (Linux + BlueZ) : serveur GATT (`bluez-peripheral`), mêmes **UUID** que le plugin ; réassemble les écritures JSON et met à jour un **`VirtualJoystickState`**. |
+| **`mini_bdx_runtime/ble_gatt_server.py`** | Sur la **Raspberry Pi** (Linux + BlueZ) : serveur GATT (`bluez-peripheral`), mêmes **UUID** que le plugin ; réassemble les écritures JSON et met à jour un **`VirtualJoystickState`**. Messages hors pad : tests, halt, **wifi** (D-023), file RX. |
 | **`mini_bdx_runtime/xbox_bridge.py`** | **`AndroidBridgeController`** : lit le joystick « virtuel » et expose **`get_last_command()`** comme la manette Xbox pour les scripts RL / tête / antennes. Option **TCP** (`--tcp-port`) pour un relais réseau. |
 
 ### Flux de données (BLE direct)

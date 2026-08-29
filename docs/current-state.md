@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-28 (STS OK 7,7 V).
+Dernière mise à jour : 2026-08-29 (Paramètres / Wi‑Fi BLE, APK 1.3.15).
 
 ## Situation du projet
 
@@ -41,7 +41,9 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 **FAIT robot (2026-08-28, PO) :** accueil = état bus STS + tension moyenne (`type: status`). **STS OK · 7,7 V**. APK **1.3.8**.
 
-**Pas encore :** vidéo (D-022, hors BLE).
+**FAIT code (2026-08-29) :** accueil **Paramètres** + écran Wi‑Fi (D-023) ; contrat `type: wifi` ; module Pi `ble_wifi.py` + `enable_wifi_sudo.sh`. **Pas déployé sur le robot** (hors Wi‑Fi maison cette session). APK **1.3.15**.
+
+**Pas encore :** vidéo (D-022, hors BLE) ; validation scan/join Wi‑Fi **sur robot**.
 
 ## Contenu du workspace
 
@@ -57,7 +59,7 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 1. OS neuf + SSH — **fait**.
 2. Script d’install (`pi-setup/`) — **écrit** ; exécution Pi **reportée** (D-020).
-3. App Android BLE native (D-022) : accueil à menus **fait** ; **Tests** actionnables **fait** ; halt envoyé (D-021) **codé** (à valider sur robot : sudoers + poweroff).
+3. App Android BLE native (D-022) : accueil à menus **fait** ; **Tests** actionnables **fait** ; halt envoyé (D-021) **codé** ; **Paramètres / Wi‑Fi BLE** (D-023) **codé**, deploy Pi **en attente**.
 4. Commandes « normales » (dont expressions pendant la marche), **sans** manette Xbox.
 
 ## Classification
@@ -72,7 +74,7 @@ Les **14** IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (FT S
 
 ### ADAPTER
 
-- UI : **native** (D-022) ; **Tests** (D-018) ; **Éteindre le robot** (D-021) hors Tests, avec confirmation.
+- UI : **native** (D-022) ; **Tests** (D-018) ; **Éteindre le robot** (D-021) hors Tests, avec confirmation ; **Paramètres / Wi‑Fi BLE** (D-023).
 - RX utile (état / logs).
 - `pi-setup` / install : BLE + audio ; **pas** Xbox `[control]`.
 - Yeux commandables depuis Tests (déjà au banc SSH).

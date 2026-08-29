@@ -38,7 +38,7 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ## Lot 3 — App Android BLE + sous-menu Tests
 
-**Statut :** lot **3a** (dump TX/RX BLE) **tenu** ; **Tests** actionnables **tenus** (2026-08-27). **Halt (D-021)** et **hello boot** validés sur robot. **Accueil STS** validé PO (2026-08-28) : **STS OK · 7,7 V**. **D-022 :** UI produit = native. Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**, **D-021**, **D-022**.
+**Statut :** lot **3a** (dump TX/RX BLE) **tenu** ; **Tests** actionnables **tenus** (2026-08-27). **Halt (D-021)** et **hello boot** validés sur robot. **Accueil STS** validé PO (2026-08-28) : **STS OK · 7,7 V**. **D-022 :** UI produit = native. **D-023 :** Paramètres + Wi‑Fi BLE **codés** (2026-08-29) ; deploy Pi (`git pull` + `enable_wifi_sudo.sh`) **en attente**. Prompt : `docs/hardware/PROMPT-agent-android-ble.md`. Décisions **D-015**, **D-018**, **D-021**, **D-022**, **D-023**.
 
 **Objectif :** APK connectée en BLE au Pi ; commandes dans les deux sens ; **sous-menu Tests** (yeux, projecteur, HP, antennes) **indépendant de la marche**. Pas de surface Xbox. **Arrêt système** depuis l’UI (D-021), hors Tests, avec confirmation.
 
@@ -62,4 +62,4 @@ Hors périmètre : oreilles / antennes (PWM, pas STS3215).
 
 ---
 
-**Prochaine étape recommandée :** valider halt sur le robot (script sudoers + arrêt réel), **pas** le lot 2 sur le Pi (D-020).
+**Prochaine étape recommandée :** **Run** APK 1.3.15 (écran Paramètres / Wi‑Fi). Sur le Pi, quand il est joignable : `git pull` puis `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_wifi_sudo.sh` et redémarrer `bdx-ble-robot`. **Pas** le lot 2 sur le Pi (D-020).

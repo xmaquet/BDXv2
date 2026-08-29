@@ -26,7 +26,11 @@ RX_UUID = "12345678-1234-5678-1234-56789abcdef2"  # robot → Android (notify / 
 
 
 def _try_apply_json_frames(
-    buf: bytearray, virtual: Any, tests: Any = None, halt: Any = None
+    buf: bytearray,
+    virtual: Any,
+    tests: Any = None,
+    halt: Any = None,
+    wifi: Any = None,
 ) -> None:
     """Décode UTF-8, extrait un ou plusieurs objets JSON (raw_decode)."""
     if not buf:
@@ -50,6 +54,9 @@ def _try_apply_json_frames(
             if obj.get("type") == "halt" and halt is not None:
                 ack = halt.request(obj)
                 print(f"[ble_gatt] halt → {ack.get('message')}", flush=True)
+            elif obj.get("type") == "wifi" and wifi is not None:
+                ack = wifi.request(obj)
+                print(f"[ble_gatt] wifi {ack.get('action')} → {ack.get('message')}", flush=True)
             elif obj.get("type") == "test" and tests is not None:
                 action = str(obj.get("action", ""))
                 sound = obj.get("sound")
@@ -132,11 +139,13 @@ def main() -> None:
     from mini_bdx_runtime.xbox_bridge import AndroidBridgeController, VirtualJoystickState
     from mini_bdx_runtime.ble_test_actions import AccessoryTests
     from mini_bdx_runtime.ble_halt import SystemHalt
+    from mini_bdx_runtime.ble_wifi import RobotWifi
     from mini_bdx_runtime.sts_bus import StsBusMonitor
 
     shared_virtual = VirtualJoystickState()
     shared_tests = AccessoryTests()
     shared_halt = SystemHalt()
+    shared_wifi = RobotWifi()
     shared_sts = StsBusMonitor(interval_s=30.0)
 
     class RobotDuckGattService(Service):
@@ -147,11 +156,13 @@ def main() -> None:
             v: VirtualJoystickState,
             tests: AccessoryTests,
             halt: SystemHalt,
+            wifi: RobotWifi,
             sts: StsBusMonitor,
         ) -> None:
             self.virtual = v
             self.tests = tests
             self.halt = halt
+            self.wifi = wifi
             self.sts = sts
             self._tx_buf = bytearray()
             self._rx_value = b'{"type":"log","level":"info","message":"idle"}'
@@ -178,13 +189,21 @@ def main() -> None:
             if len(self._tx_buf) > 65536:
                 self._tx_buf.clear()
                 return
-            _try_apply_json_frames(self._tx_buf, self.virtual, self.tests, self.halt)
+            _try_apply_json_frames(
+                self._tx_buf, self.virtual, self.tests, self.halt, self.wifi
+            )
 
         @characteristic(RX_UUID, CharFlags.NOTIFY | CharFlags.READ)
         def rx_characteristic(self, options):  # noqa: ARG002
             return bytes(self._rx_value)
 
         def _prepare_rx(self) -> None:
+            wifi_msg = self.wifi.pop() if self.wifi is not None else None
+            if wifi_msg:
+                payload = dict(wifi_msg)
+                payload.setdefault("ts_ms", int(time.time() * 1000))
+                self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+                return
             for src in (self.halt, self.tests):
                 state = getattr(src, "last_state", None)
                 if state:
@@ -257,7 +276,9 @@ def main() -> None:
         except Exception as e:
             print(f"[ble_gatt] Impossible d’allumer l’adaptateur ({e}).", file=sys.stderr)
 
-        srv = RobotDuckGattService(shared_virtual, shared_tests, shared_halt, shared_sts)
+        srv = RobotDuckGattService(
+            shared_virtual, shared_tests, shared_halt, shared_wifi, shared_sts
+        )
         await srv.register(bus, adapter=adapter)
 
         if not args.no_agent:
@@ -308,8 +329,10 @@ def main() -> None:
 
         async def _echo_loop() -> None:
             while True:
-                pending = getattr(shared_tests, "last_state", None) or getattr(
-                    shared_halt, "last_state", None
+                pending = (
+                    (shared_wifi.pending() if shared_wifi is not None else False)
+                    or getattr(shared_tests, "last_state", None)
+                    or getattr(shared_halt, "last_state", None)
                 )
                 await asyncio.sleep(0.25 if pending else 1.0)
                 srv._prepare_rx()

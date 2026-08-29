@@ -170,6 +170,21 @@ def icon_eteindre() -> Image.Image:
     return im
 
 
+def icon_parametres() -> Image.Image:
+    im, d = canvas()
+    circle(d, 512, 512, 170, 88)
+    circle(d, 512, 512, 58, 64)
+    for ang in range(0, 360, 60):
+        rad = math.radians(ang)
+        line(
+            d,
+            (512 + math.cos(rad) * 170, 512 + math.sin(rad) * 170),
+            (512 + math.cos(rad) * 280, 512 + math.sin(rad) * 280),
+            88,
+        )
+    return im
+
+
 def preview_sheet(icons: dict[str, Image.Image]) -> None:
     cell, pad = 220, 24
     sheet = Image.new("RGB", (4 * cell + pad * 2, 2 * cell + pad * 2 + 36), (33, 37, 41))
@@ -213,4 +228,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if "--parametres" in sys.argv:
+        save(icon_parametres(), "icon_menu_parametres.png")
+    else:
+        main()

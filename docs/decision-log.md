@@ -325,6 +325,22 @@ L’application tablette est une **UI Android native**. La WebView Capacitor (pr
 
 ---
 
+## D-023 — Paramètres app ; Wi‑Fi robot via BLE
+
+**Statut :** adoptée (2026-08-29, PO)
+
+L’accueil comporte une zone **Paramètres** (carte, avant Éteindre) pour regrouper des fonctions pratiques. Première fonction : **Wi‑Fi du robot** via le lien BLE déjà établi (D-015), afin de voir le réseau configuré, l’état, les SSID visibles, et de **changer de réseau** sans câble ni Wi‑Fi « maison ».
+
+**Hors Tests, hors halt.** La **vidéo reste hors BLE** (D-022).
+
+**Comportement :** plusieurs profils Wi‑Fi mémorisés (on n’écrase pas l’ancien) ; réseau ouvert autorisé avec confirmation ; échec d’association affiché, sans reconnexion magique. Pi Zero 2W = **2,4 GHz seulement**.
+
+**Protocole :** message dédié `{ "type": "wifi", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Mot de passe en TX uniquement, jamais en RX / logs.
+
+**Pi :** wrapper `bdx-wifi` + `scripts/enable_wifi_sudo.sh` (une fois, hors `pi-setup/install.sh`, D-020). Déploiement robot = `git pull` (ou scp) + sudoers quand le Pi est joignable.
+
+---
+
 ## Reporté
 
 - **D-C** — Réingénierie large de la stack : phase ultérieure éventuelle, pas engagée.

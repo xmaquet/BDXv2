@@ -222,6 +222,48 @@ Réponses RX :
 
 Le robot peut aussi renvoyer un `type: log` (`message` = résultat).
 
+### Wi‑Fi robot (D-023)
+
+Configuration **Wi‑Fi du Pi** via BLE, pour changer de réseau sans câble. **Pas** un `ControllerFrame`, **pas** `type: test`. Le lien tablette ↔ robot **reste BLE** pendant l’association.
+
+```json
+{ "type": "wifi", "v": 1, "action": "status" }
+{ "type": "wifi", "v": 1, "action": "scan" }
+{ "type": "wifi", "v": 1, "action": "join", "ssid": "Maison", "psk": "…", "confirm": true }
+```
+
+Règles :
+
+- `action` : `status` | `scan` | `join`.
+- `join` : `confirm` **doit** être le booléen JSON `true`. Sinon refus, **aucune** modification réseau.
+- `psk` omis ou `""` = réseau ouvert. Le mot de passe **ne revient jamais** en RX, ni dans les logs robot.
+- Pi Zero 2W : **2,4 GHz seulement**. Les BSS 5 GHz ne sont pas proposés.
+- Plusieurs profils NetworkManager **conservés** (on n’efface pas l’ancien réseau).
+
+Réponses RX :
+
+```json
+{ "type": "wifi_state", "v": 1, "ssid": "Maison", "state": "connected", "ip": "192.168.1.12", "rssi": -55, "message": "" }
+{ "type": "wifi_scan", "v": 1, "i": 0, "n": 2, "nets": [ { "ssid": "Maison", "rssi": -40, "sec": "psk", "in_use": true } ] }
+{ "type": "wifi_ack", "v": 1, "action": "join", "accepted": true, "message": "Association demandée" }
+```
+
+`state` : `connected` | `connecting` | `disconnected` | `failed`.  
+`sec` : `open` | `psk`.  
+`ssid` / `ip` / `rssi` peuvent être `null` si inconnus.
+
+Scan **asynchrone** : `scan` → `wifi_ack` immédiat, puis un ou plusieurs `wifi_scan` (`i` / `n`, découpage MTU). L’UI concatène. `n >= 1` ; une liste vide = un chunk `nets: []`.
+
+Échec d’association : `wifi_state.state = failed` (et/ou `wifi_ack.accepted = false`). Pas de reconnexion automatique inventée.
+
+Droits Pi : wrapper `bdx-wifi` uniquement (pas `nmcli` libre). Une fois, hors `pi-setup/install.sh` (D-020) :
+
+```bash
+bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_wifi_sudo.sh
+```
+
+À intégrer plus tard dans l’install complète (D-012). **HYPOTHÈSE** runtime : NetworkManager (`nmcli`) sur Lite Bookworm+. Le JSON ci-dessus ne dépend pas de l’outil.
+
 ### Vidéo (D-015, D-022)
 
 **Hors BLE GATT.** Deux temps, lots ultérieurs :
