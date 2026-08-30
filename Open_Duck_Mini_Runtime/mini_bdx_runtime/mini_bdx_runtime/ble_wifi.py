@@ -205,6 +205,7 @@ class RobotWifi:
         self._push(_state(ssid, state, info.get("ip"), rssi, ""))
 
     def _scan(self) -> None:
+        print("[ble_wifi] scan début", flush=True)
         try:
             _, wifi_list = self._run("scan")
         except FileNotFoundError:
@@ -213,7 +214,9 @@ class RobotWifi:
         except Exception as e:
             self._ack("scan", False, str(e)[:180])
             return
-        for chunk in chunk_scan(parse_nmcli_wifi_list(wifi_list)):
+        nets = parse_nmcli_wifi_list(wifi_list)
+        print(f"[ble_wifi] scan {len(nets)} réseaux", flush=True)
+        for chunk in chunk_scan(nets):
             self._push(chunk)
 
     def _join(self, obj: dict[str, Any]) -> dict[str, Any]:
@@ -274,9 +277,10 @@ def _state(
 def _run_wrapper(action: str, ssid: str = "", psk: str = "") -> tuple[str, str]:
     if not os.path.isfile(_WRAPPER):
         raise FileNotFoundError(_WRAPPER)
+    sudo = "/usr/bin/sudo"
     if action == "join":
         result = subprocess.run(
-            ["sudo", "-n", _WRAPPER, "join", ssid],
+            [sudo, "-n", _WRAPPER, "join", ssid],
             input=psk,
             capture_output=True,
             text=True,
@@ -286,18 +290,22 @@ def _run_wrapper(action: str, ssid: str = "", psk: str = "") -> tuple[str, str]:
             err = (result.stderr or result.stdout or "join échoué").strip()
             raise RuntimeError(err[:180] or _SUDOERS_HINT)
         return result.stdout, ""
-    result = subprocess.run(
-        ["sudo", "-n", _WRAPPER, action],
-        capture_output=True,
-        text=True,
-        timeout=30 if action == "scan" else 10,
-    )
+    timeout = 30 if action == "scan" else 10
+    cmd = [_WRAPPER, action]
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    if result.returncode != 0:
+        result = subprocess.run(
+            [sudo, "-n", _WRAPPER, action],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
     if result.returncode != 0:
         err = (result.stderr or result.stdout or "wifi échoué").strip()
         raise RuntimeError(err[:180] or _SUDOERS_HINT)
-    show, _, wifi_list = result.stdout.partition("\n---\n")
     if action == "scan":
         return "", result.stdout
+    show, _, wifi_list = result.stdout.partition("\n---\n")
     return show, wifi_list
 
 

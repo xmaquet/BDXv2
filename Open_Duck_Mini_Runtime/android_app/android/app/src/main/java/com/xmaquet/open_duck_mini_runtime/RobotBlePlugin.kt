@@ -77,9 +77,9 @@ class RobotBlePlugin : Plugin() {
     private var mtu: Int = 23
 
     private val writeQueue: ConcurrentLinkedQueue<ByteArray> = ConcurrentLinkedQueue()
+    private val pendingPayloads: ConcurrentLinkedQueue<String> = ConcurrentLinkedQueue()
     private var writing: Boolean = false
     private var writeEpoch: Int = 0
-    private var pendingPayload: String? = null
     private var rxReady: Boolean = false
     private var cccdPending: Boolean = false
     private var cccdEpoch: Int = 0
@@ -248,8 +248,7 @@ class RobotBlePlugin : Plugin() {
 
     fun sendNative(payload: String) {
         lastSendMs = System.currentTimeMillis()
-        pendingPayload = if (estopEnabled) buildNeutralFrame(estop = true) else payload
-        writePendingIfIdle()
+        enqueueOutgoing(if (estopEnabled) buildNeutralFrame(estop = true) else payload)
     }
 
     fun isLinkReady(): Boolean = gatt != null && txChar != null && rxReady
@@ -658,7 +657,7 @@ class RobotBlePlugin : Plugin() {
         gattCacheInvalidated = false
         mtu = 23
         cccdEpoch++
-        pendingPayload = null
+        pendingPayloads.clear()
         writeQueue.clear()
     }
 
@@ -666,8 +665,7 @@ class RobotBlePlugin : Plugin() {
     @PluginMethod
     fun emergencyStop(call: PluginCall) {
         estopEnabled = call.getBoolean("enabled", false) == true
-        pendingPayload = buildNeutralFrame(estop = estopEnabled)
-        writePendingIfIdle()
+        enqueueOutgoing(buildNeutralFrame(estop = estopEnabled))
         call.resolve()
     }
 
@@ -681,21 +679,23 @@ class RobotBlePlugin : Plugin() {
         }
         lastSendMs = System.currentTimeMillis()
         if (estopEnabled) {
-            pendingPayload = buildNeutralFrame(estop = true)
-            writePendingIfIdle()
+            enqueueOutgoing(buildNeutralFrame(estop = true))
             call.resolve()
             return
         }
-        pendingPayload = payload
-        writePendingIfIdle()
+        enqueueOutgoing(payload)
         call.resolve()
+    }
+
+    private fun enqueueOutgoing(payload: String) {
+        pendingPayloads.add(payload)
+        writePendingIfIdle()
     }
 
     private fun writePendingIfIdle() {
         if (writing || cccdPending) return
-        val payload = pendingPayload ?: return
         if (writeQueue.isNotEmpty()) return
-        pendingPayload = null
+        val payload = pendingPayloads.poll() ?: return
         enqueuePayload(payload)
     }
 
@@ -767,7 +767,7 @@ class RobotBlePlugin : Plugin() {
                     if (linkReady) {
                         val delta = now - lastSendMs
                         if (delta > watchdogTimeoutMs) {
-                            pendingPayload = buildNeutralFrame(estop = estopEnabled)
+                            pendingPayloads.add(buildNeutralFrame(estop = estopEnabled))
                             writePendingIfIdle()
                         }
                     }

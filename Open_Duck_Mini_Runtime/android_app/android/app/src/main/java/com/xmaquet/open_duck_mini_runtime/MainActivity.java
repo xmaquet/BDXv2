@@ -102,6 +102,7 @@ public class MainActivity extends BridgeActivity {
   private Button wifiScan;
   private boolean wifiScanning;
   private int wifiScanGen;
+  private boolean wifiGotRx;
   private String lastWifiSsid;
   private String lastWifiConnState;
   private String lastWifiIp;
@@ -313,7 +314,13 @@ public class MainActivity extends BridgeActivity {
     paintWifi();
     if (connected) {
       sendWifi("status");
-      sendWifi("scan");
+      txHandler.postDelayed(
+          () -> {
+            if (current == Screen.WIFI && connected) {
+              sendWifi("scan");
+            }
+          },
+          400);
     } else if (wifiHint != null) {
       wifiHint.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
     }
@@ -426,6 +433,7 @@ public class MainActivity extends BridgeActivity {
       ble.sendNative(o.toString());
       if ("scan".equals(action)) {
         wifiScanning = true;
+        wifiGotRx = false;
         final int gen = ++wifiScanGen;
         if (wifiScan != null) {
           wifiScan.setEnabled(false);
@@ -440,12 +448,14 @@ public class MainActivity extends BridgeActivity {
                 wifiScanning = false;
                 if (lastWifiNets.isEmpty()) {
                   lastWifiMessage =
-                      "Pas de réponse Wi‑Fi du robot. Firmware ou sudoers pas encore à jour ?";
+                      wifiGotRx
+                          ? "Scan terminé, aucun réseau 2,4 GHz listé."
+                          : "Pas de réponse Wi‑Fi du robot. Firmware ou sudoers pas encore à jour ?";
                 }
                 paintWifi();
               }
             },
-            15000);
+            40000);
       } else if (wifiHint != null) {
         wifiHint.setText("Demande d’état envoyée.");
       }
@@ -598,6 +608,9 @@ public class MainActivity extends BridgeActivity {
     try {
       JSONObject o = new JSONObject(text);
       String type = o.optString("type");
+      if (type.startsWith("wifi_")) {
+        wifiGotRx = true;
+      }
       if ("wifi_ack".equals(type)) {
         String message = o.optString("message");
         boolean accepted = o.optBoolean("accepted");
