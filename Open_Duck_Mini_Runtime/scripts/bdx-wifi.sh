@@ -23,9 +23,24 @@ case "${action}" in
     nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
     ;;
   scan)
-    nmcli device wifi rescan ifname "${DEV}" >/dev/null 2>&1 || true
-    sleep 2
-    nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
+    nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}" --rescan yes \
+      || nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
+    ;;
+  prefer)
+    ssid="${2:-}"
+    if [[ -z "${ssid}" ]]; then
+      echo "wifi : SSID manquant" >&2
+      exit 1
+    fi
+    nmcli -t -f NAME,TYPE connection show | awk -F: '$2=="802-11-wireless" || $2=="wifi"{print $1}' | while IFS= read -r name; do
+      [[ -z "${name}" ]] && continue
+      cur="$(nmcli -g 802-11-wireless.ssid connection show "${name}" 2>/dev/null || true)"
+      if [[ "${cur}" == "${ssid}" ]]; then
+        nmcli connection modify "${name}" connection.autoconnect yes connection.autoconnect-priority 200
+      else
+        nmcli connection modify "${name}" connection.autoconnect-priority 0
+      fi
+    done
     ;;
   join)
     ssid="${2:-}"

@@ -230,21 +230,24 @@ Configuration **Wi‑Fi du Pi** via BLE, pour changer de réseau sans câble. **
 { "type": "wifi", "v": 1, "action": "status" }
 { "type": "wifi", "v": 1, "action": "scan" }
 { "type": "wifi", "v": 1, "action": "join", "ssid": "Maison", "psk": "…", "confirm": true }
+{ "type": "wifi", "v": 1, "action": "set_default", "ssid": "Maison", "confirm": true }
 ```
 
 Règles :
 
-- `action` : `status` | `scan` | `join`.
+- `action` : `status` | `scan` | `join` | `set_default`.
 - `join` : `confirm` **doit** être le booléen JSON `true`. Sinon refus, **aucune** modification réseau.
-- `psk` omis ou `""` = réseau ouvert. Le mot de passe **ne revient jamais** en RX, ni dans les logs robot.
+- `set_default` : `confirm` **doit** être `true`. `ssid` = réseau **par défaut** (prioritaire si visible). `ssid` vide = oublier le défaut.
+- `psk` omis ou `""` = réseau ouvert, ou profil NetworkManager déjà connu. Le mot de passe **ne revient jamais** en RX, ni dans les logs robot.
 - Pi Zero 2W : **2,4 GHz seulement**. Les BSS 5 GHz ne sont pas proposés.
 - Plusieurs profils NetworkManager **conservés** (on n’efface pas l’ancien réseau).
+- Si un défaut est enregistré et qu’il apparaît au **scan** alors que le robot est sur un autre SSID, le robot **tente** de s’y associer (profil déjà connu, sans redemander le mot de passe).
 
 Réponses RX :
 
 ```json
-{ "type": "wifi_state", "v": 1, "ssid": "Maison", "state": "connected", "ip": "192.168.1.12", "rssi": -55, "message": "" }
-{ "type": "wifi_scan", "v": 1, "i": 0, "n": 2, "nets": [ { "ssid": "Maison", "rssi": -40, "sec": "psk", "in_use": true } ] }
+{ "type": "wifi_state", "v": 1, "ssid": "Maison", "state": "connected", "ip": "192.168.1.12", "rssi": -55, "default_ssid": "Maison", "message": "" }
+{ "type": "wifi_scan", "v": 1, "i": 0, "n": 2, "nets": [ { "ssid": "Maison", "rssi": -40, "sec": "psk", "in_use": true, "is_default": true } ] }
 { "type": "wifi_ack", "v": 1, "action": "join", "accepted": true, "message": "Association demandée" }
 ```
 
@@ -254,7 +257,9 @@ Réponses RX :
 
 Scan **asynchrone** : `scan` → `wifi_ack` immédiat, puis un ou plusieurs `wifi_scan` (`i` / `n`, découpage MTU). L’UI concatène. `n >= 1` ; une liste vide = un chunk `nets: []`.
 
-Échec d’association : `wifi_state.state = failed` (et/ou `wifi_ack.accepted = false`). Pas de reconnexion automatique inventée.
+Échec d’association : `wifi_state.state = failed` (et/ou `wifi_ack.accepted = false`). Pas de reconnexion magique vers un réseau quelconque : seule l’association vers le **SSID par défaut**, s’il est visible et déjà connu de NetworkManager, est automatique après un scan.
+
+Le défaut est un SSID mémorisé sur le Pi (`~/bdx_wifi_default.json`), **sans mot de passe**. L’UI le choisit par appui long (ou bouton « Par défaut »).
 
 Droits Pi : wrapper `bdx-wifi` uniquement (pas `nmcli` libre). Une fois, hors `pi-setup/install.sh` (D-020) :
 

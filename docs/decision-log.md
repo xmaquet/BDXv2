@@ -107,7 +107,7 @@ Le **live tablette d’abord**. Les séquences suivent, dans la même phase prod
 
 **Précision D-010 :** le live se matérialise d’abord par le **mode test** (fonctions une à une). Les « séquences » ne sont pas le mode normal : le mode normal = expressions **pendant** la marche, comme les scripts d’origine.
 
-**Avancement (2026-08-27) :** première séquence = **hello au démarrage** de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`). Contournement : `--no-hello`. Autostart boot : `scripts/enable_ble_robot_boot.sh`.
+**Avancement (2026-08-29) :** hello au démarrage de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`), **in-process** GATT. Contournement : `--no-hello`. Dès que la pub BLE est active : `BLE_OKAY_mini_BDX.wav`. Autostart : `scripts/enable_ble_robot_boot.sh`.
 
 ---
 
@@ -187,7 +187,7 @@ Les servos corps / tête **STS3215** se programment avec le logiciel **FT SCServ
 
 Ce n’est **pas** le même bus que les servos d’oreilles (PWM GPIO D12/D13 dans `antennas.py`).
 
-**Avancement (2026-08-26) :** les 14 IDs (10–14, 20–24, 30–33) sont **déclarés programmés** (offset EEPROM 0, D=0, Lock=1). Calibration `find_soft_offsets.py` **pas commencée**. Pas de test bus une fois montés.
+**Avancement (2026-08-29) :** les 14 IDs sont **déclarés programmés** (offset EEPROM 0, D=0, Lock=1). Bus **lu sur robot** (2026-08-28, PO) : 14/14, ~7,7 V (pyserial, accueil BLE). Script d’offsets interactif **écrit** (`find_soft_offsets_interactive.py`). Calibration des 14 axes **pas déclarée faite**. Pas de marche.
 
 ---
 
@@ -201,7 +201,7 @@ Les **commandes** circulent en **Bluetooth Low Energy dans les deux sens** (tabl
 
 La **vidéo** (Picam déjà en place) est un objectif **ultérieur**, pas le critère du premier livrable BLE.
 
-**Avancement (2026-08-25) :** audit code fait ; **pas** d’APK, **pas** de test BLE. Lot 3a (dump TX/RX) proposé, non autorisé.
+**Avancement (2026-08-29) :** APK **native 1.3.15** (D-022). BLE TX/RX, Tests, halt (D-021), statut STS, hello boot **validés sur robot**. Wi‑Fi robot via BLE (D-023) **codé**, deploy Pi **en attente**. Vidéo toujours plus tard, hors GATT.
 
 ---
 
@@ -333,11 +333,29 @@ L’accueil comporte une zone **Paramètres** (carte, avant Éteindre) pour regr
 
 **Hors Tests, hors halt.** La **vidéo reste hors BLE** (D-022).
 
-**Comportement :** plusieurs profils Wi‑Fi mémorisés (on n’écrase pas l’ancien) ; réseau ouvert autorisé avec confirmation ; échec d’association affiché, sans reconnexion magique. Pi Zero 2W = **2,4 GHz seulement**.
+**Comportement :** plusieurs profils Wi‑Fi mémorisés (on n’écrase pas l’ancien) ; réseau ouvert autorisé avec confirmation ; échec d’association affiché. Un SSID peut être marqué **par défaut** : s’il est visible au scan, le robot s’y associe en priorité (profil NetworkManager déjà connu, sans redemander le mot de passe). Pi Zero 2W = **2,4 GHz seulement**.
 
 **Protocole :** message dédié `{ "type": "wifi", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Mot de passe en TX uniquement, jamais en RX / logs.
 
 **Pi :** wrapper `bdx-wifi` + `scripts/enable_wifi_sudo.sh` (une fois, hors `pi-setup/install.sh`, D-020). Déploiement robot = `git pull` (ou scp) + sudoers quand le Pi est joignable.
+
+---
+
+## D-024 — Sons événementiels ; hello aléatoire d’inactivité
+
+**Statut :** adoptée (2026-08-29, PO) — **à implémenter plus tard**, pas maintenant.
+
+Les WAV ajoutés (hors catalogue Tests héritage) ont un rôle produit :
+
+- **Événements (à terme)** — racine `mini_bdx_runtime/assets/` :
+  - `WIFI_OKAY_mini_BDX.wav` — Wi‑Fi OK ;
+  - `WIFI_PROBLEM_mini_BDX.wav` — problème Wi‑Fi ;
+  - `ENERGY_PROBLEM_mini_BDX.wav` — problème d’énergie / tension.
+- **Hello aléatoire d’inactivité** — `mini_bdx_runtime/assets/random_sounds/` : tirage parmi ces clips, **accompagné de mimiques et des yeux**, pendant des **périodes d’inactivité durables**.
+
+Ce n’est **pas** le hello de boot (D-008). Ce n’est **pas** un son Tests à la demande.
+
+**Hors périmètre immédiat :** câbler les événements, le chargeur récursif, le timer d’inactivité, le seuil « durable ». À trancher au moment du lot.
 
 ---
 

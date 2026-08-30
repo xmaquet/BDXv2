@@ -30,7 +30,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Le changement de réseau passe par BLE. Connecte d’abord le bandeau du haut."
+        android:text="Appui long sur un réseau pour le marquer par défaut : le robot s’y reconnecte en priorité s’il est visible."
         android:textColor="@color/bs_muted"
         android:textSize="14sp" />
 
@@ -67,6 +67,15 @@
             android:layout_marginTop="2dp"
             android:text="IP —"
             android:textColor="@color/bs_muted"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/wifi_default"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Par défaut · aucun"
+            android:textColor="@color/bs_yellow"
             android:textSize="14sp" />
     </LinearLayout>
 

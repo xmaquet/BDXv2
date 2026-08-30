@@ -27,6 +27,7 @@ import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
 import org.json.JSONObject;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Locale;
 
 public class MainActivity extends BridgeActivity {
@@ -98,12 +99,14 @@ public class MainActivity extends BridgeActivity {
   private TextView wifiSsidView;
   private TextView wifiStateView;
   private TextView wifiIpView;
+  private TextView wifiDefaultView;
   private LinearLayout wifiList;
   private Button wifiScan;
   private boolean wifiScanning;
   private int wifiScanGen;
   private boolean wifiGotRx;
   private String lastWifiSsid;
+  private String lastWifiDefaultSsid = "";
   private String lastWifiConnState;
   private String lastWifiIp;
   private int lastWifiRssi = Integer.MIN_VALUE;
@@ -308,6 +311,7 @@ public class MainActivity extends BridgeActivity {
     wifiSsidView = view.findViewById(R.id.wifi_ssid);
     wifiStateView = view.findViewById(R.id.wifi_state);
     wifiIpView = view.findViewById(R.id.wifi_ip);
+    wifiDefaultView = view.findViewById(R.id.wifi_default);
     wifiList = view.findViewById(R.id.wifi_list);
     wifiScan = view.findViewById(R.id.wifi_scan);
     wifiScan.setOnClickListener(v -> sendWifi("scan"));
@@ -466,6 +470,52 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
+  private void sendWifiSetDefault(String ssid) {
+    if (ble == null || !connected || !ble.isLinkReady()) {
+      if (wifiHint != null) {
+        wifiHint.setText("BLE non prêt — connecte d’abord (bandeau du haut).");
+      }
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject();
+      o.put("type", "wifi");
+      o.put("v", 1);
+      o.put("action", "set_default");
+      o.put("ssid", ssid == null ? "" : ssid);
+      o.put("confirm", true);
+      ble.sendNative(o.toString());
+      lastWifiDefaultSsid = ssid == null ? "" : ssid;
+      lastWifiMessage =
+          lastWifiDefaultSsid.isEmpty()
+              ? "Défaut oublié."
+              : "Défaut : " + lastWifiDefaultSsid + " — prioritaire s’il est visible.";
+      paintWifi();
+    } catch (Exception e) {
+      if (wifiHint != null) {
+        wifiHint.setText("Envoi impossible");
+      }
+    }
+  }
+
+  private void confirmDefault(String ssid) {
+    boolean already =
+        ssid != null && !ssid.isEmpty() && ssid.equals(lastWifiDefaultSsid);
+    AlertDialog.Builder b = new AlertDialog.Builder(this);
+    b.setTitle(ssid);
+    if (already) {
+      b.setMessage("Ne plus utiliser ce réseau comme défaut ?");
+      b.setNegativeButton("Annuler", null);
+      b.setPositiveButton("Retirer", (d, w) -> sendWifiSetDefault(""));
+    } else {
+      b.setMessage(
+          "Le robot s’y connectera en priorité dès que ce réseau 2,4 GHz est visible (profil déjà connu, sans redemander le mot de passe).");
+      b.setNegativeButton("Annuler", null);
+      b.setPositiveButton("Par défaut", (d, w) -> sendWifiSetDefault(ssid));
+    }
+    b.show();
+  }
+
   private void sendWifiJoin(String ssid, String psk) {
     if (ble == null || !connected || !ble.isLinkReady()) {
       if (wifiHint != null) {
@@ -518,6 +568,7 @@ public class MainActivity extends BridgeActivity {
       passwordField = null;
     }
     b.setNegativeButton("Annuler", null);
+    b.setNeutralButton("Par défaut", (d, w) -> confirmDefault(ssid));
     b.setPositiveButton(
         "Connecter",
         (d, w) -> {
@@ -540,6 +591,12 @@ public class MainActivity extends BridgeActivity {
       String sig =
           lastWifiRssi == Integer.MIN_VALUE ? "—" : String.valueOf(lastWifiRssi);
       wifiIpView.setText("IP " + ip + "  ·  signal " + sig);
+    }
+    if (wifiDefaultView != null) {
+      wifiDefaultView.setText(
+          lastWifiDefaultSsid == null || lastWifiDefaultSsid.isEmpty()
+              ? "Par défaut · aucun (appui long)"
+              : "Par défaut · " + lastWifiDefaultSsid);
     }
     if (wifiHint != null && lastWifiMessage != null && !lastWifiMessage.isEmpty()) {
       wifiHint.setText(lastWifiMessage);
@@ -573,8 +630,24 @@ public class MainActivity extends BridgeActivity {
     }
     wifiList.removeAllViews();
     int gap = Math.round(8 * getResources().getDisplayMetrics().density);
-    for (int i = 0; i < lastWifiNets.size(); i++) {
-      JSONObject net = lastWifiNets.get(i);
+    ArrayList<JSONObject> rows = new ArrayList<>(lastWifiNets);
+    Collections.sort(
+        rows,
+        (a, b) -> {
+          boolean da = isWifiDefault(a);
+          boolean db = isWifiDefault(b);
+          if (da != db) {
+            return da ? -1 : 1;
+          }
+          boolean ua = a.optBoolean("in_use");
+          boolean ub = b.optBoolean("in_use");
+          if (ua != ub) {
+            return ua ? -1 : 1;
+          }
+          return Integer.compare(b.optInt("rssi", 0), a.optInt("rssi", 0));
+        });
+    for (int i = 0; i < rows.size(); i++) {
+      JSONObject net = rows.get(i);
       String ssid = net.optString("ssid");
       if (ssid.isEmpty()) {
         continue;
@@ -583,12 +656,15 @@ public class MainActivity extends BridgeActivity {
       TextView name = row.findViewById(R.id.wifi_net_ssid);
       TextView meta = row.findViewById(R.id.wifi_net_meta);
       TextView badge = row.findViewById(R.id.wifi_net_badge);
+      TextView defBadge = row.findViewById(R.id.wifi_net_default);
       name.setText(ssid);
       boolean psk = "psk".equals(net.optString("sec"));
       int rssi = net.optInt("rssi", 0);
       meta.setText((psk ? "Sécurisé" : "Ouvert") + " · signal " + rssi);
       boolean inUse = net.optBoolean("in_use");
+      boolean isDefault = isWifiDefault(net);
       badge.setVisibility(inUse ? View.VISIBLE : View.GONE);
+      defBadge.setVisibility(isDefault ? View.VISIBLE : View.GONE);
       LinearLayout.LayoutParams lp =
           new LinearLayout.LayoutParams(
               LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -597,8 +673,21 @@ public class MainActivity extends BridgeActivity {
       }
       row.setLayoutParams(lp);
       row.setOnClickListener(v -> confirmJoin(ssid, psk));
+      row.setOnLongClickListener(
+          v -> {
+            confirmDefault(ssid);
+            return true;
+          });
       wifiList.addView(row);
     }
+  }
+
+  private boolean isWifiDefault(JSONObject net) {
+    if (net.optBoolean("is_default")) {
+      return true;
+    }
+    String ssid = net.optString("ssid");
+    return !ssid.isEmpty() && ssid.equals(lastWifiDefaultSsid);
   }
 
   private void applyWifiRx(String text) {
@@ -608,7 +697,7 @@ public class MainActivity extends BridgeActivity {
     try {
       JSONObject o = new JSONObject(text);
       String type = o.optString("type");
-      if (type.startsWith("wifi_")) {
+      if ("wifi_scan".equals(type)) {
         wifiGotRx = true;
       }
       if ("wifi_ack".equals(type)) {
@@ -633,6 +722,10 @@ public class MainActivity extends BridgeActivity {
           lastWifiRssi = Integer.MIN_VALUE;
         }
         lastWifiMessage = o.optString("message", lastWifiMessage);
+        if (o.has("default_ssid")) {
+          lastWifiDefaultSsid =
+              o.isNull("default_ssid") ? "" : o.optString("default_ssid", "");
+        }
         paintWifi();
         return;
       }
