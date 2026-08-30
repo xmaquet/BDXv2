@@ -360,6 +360,20 @@ Ce n’est **pas** un son Tests à la demande. L’idle `random_sounds/` n’est
 
 ---
 
+## D-025 — Choix de robot BLE (liste + mémoire d’adresse)
+
+**Statut :** adoptée (2026-08-30, PO) — **implémentation plus tard, ne pas coder maintenant**.
+
+Quand plusieurs BDX exposent le **même** service GATT, l’app doit afficher une **liste** (noms annoncés) et laisser l’opérateur **choisir**, puis **mémoriser l’adresse Bluetooth** pour s’y reconnecter.
+
+L’UUID reste l’identifiant de **famille** (dialecte BDX), pas d’un robot. Un nom annoncé distinct par machine (`--name`) est requis pour que la liste soit lisible. Aujourd’hui : premier appareil vu ; nom par défaut `Open Duck Mini`.
+
+**Hors ce livrable :** pairing / liaison BLE (PIN, bond) ; UUID différent par robot.
+
+**Ouvert au moment du lot :** reconnecter tout seul au dernier robot, ou toujours montrer la liste (avec « Changer de robot »).
+
+---
+
 ## Reporté
 
 - **D-C** — Réingénierie large de la stack : phase ultérieure éventuelle, pas engagée.

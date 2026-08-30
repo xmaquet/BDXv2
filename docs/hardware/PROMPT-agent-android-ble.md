@@ -18,7 +18,7 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 ## Lire d’abord
 
 - `AGENTS.md`
-- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**, **D-020**, **D-021**, **D-022**, **D-023**, **D-024**)
+- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**, **D-020**, **D-021**, **D-022**, **D-023**, **D-024**, **D-025**)
 - `docs/next-lot.md` (lots 3 et 4)
 - `docs/current-state.md`
 - `Open_Duck_Mini_Runtime/docs/protocol.md` (contrat JSON + UUID GATT)
@@ -102,13 +102,14 @@ Critère phase A : tablette connectée en BLE ; chaque accessoire v1 actionnable
 - Caméra / micro comme fonctions v1 (sauf phase B vidéo, sur ordre PO)
 - Reboot comme action UI par défaut ; couple STS avant halt (sauf ordre PO)
 - **D-024** : init `WIFI_OKAY` / `WIFI_PROBLEM` **déjà faite** — ne pas recoder. Reste (énergie, idle, Wi‑Fi en session) : **ne pas coder** sans ordre PO
+- **D-025** : liste + choix de robot + mémoire d’adresse — **ne pas coder** sans ordre PO. Garder le scan « premier vu » et le nom `Open Duck Mini`.
 - Git commit / push sauf demande explicite du PO
 - Élargir le contrat métier pour simplifier le code
 
 ## Démarrage
 
 1. Lis `docs/current-state.md` et résume l’écart **réel** (ne pas repartir de « pas d’APK / UI manette » : c’est **obsolète**).
-2. Propose le **prochain lot borné** à partir de l’état actuel (hello Wi‑Fi à l’oreille après SIGKILL GATT, ou lot 4 consommer `ControllerFrame`). Attends l’accord avant de coder. Ne pas ouvrir D-024 énergie / idle sans ordre.
+2. Propose le **prochain lot borné** à partir de l’état actuel (hello Wi‑Fi à l’oreille après SIGKILL GATT, ou lot 4 consommer `ControllerFrame`). Attends l’accord avant de coder. Ne pas ouvrir D-024 énergie / idle ni **D-025** (liste de robots) sans ordre.
 3. Lots courts, vérifiables ; à la fin : fichiers touchés, version APK, comment relancer `bdx-ble-robot`.
 
 Si tu ne peux pas flasher la tablette depuis cette machine, dis-le et donne la procédure exacte au PO.

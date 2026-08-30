@@ -40,7 +40,7 @@ Accueil : Piloter · Tests · Vidéo (placeholder) · Monitoring · Éteindre.
 
 **Wi‑Fi robot (D-023) :** scan / join / défaut **sur le banc**. Hello init : après `BLE_OKAY`, attente ~20 s NM → `WIFI_OKAY` ou `WIFI_PROBLEM` (alors Monitoring). **Pour entendre le nouveau hello :** relancer `bdx-ble-robot` (SIGKILL) — le `git pull` ne recharge pas le process.
 
-**Pas encore :** commandes « hors Tests » / parallèle marche (lot 4) ; vidéo (D-022, hors BLE).
+**Pas encore :** commandes « hors Tests » / parallèle marche (lot 4) ; vidéo (D-022, hors BLE) ; **choix de robot** (D-025 : liste + mémoire d’adresse — **ne pas coder** maintenant). Scan actuel = premier appareil au service UUID ; nom annoncé = `Open Duck Mini`.
 
 ## STS3215 (D-014)
 
@@ -80,7 +80,7 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 1. OS neuf + SSH — **fait**.
 2. Script d’install (`pi-setup/`) — **écrit** ; exécution **reportée** (D-020).
 3. App BLE native — **tenue** (Tests, halt, accueil STS, Monitoring, Wi‑Fi banc). Hello Wi‑Fi **codé et tiré** ; valider à l’oreille après restart GATT. Vidéo plus tard.
-4. Commandes hors Tests (dont parallèle marche) — **pas démarré**. L’UI Piloter envoie déjà le `ControllerFrame`.
+4. Commandes hors Tests / marche — **découverte** (prompt `docs/hardware/PROMPT-agent-marche.md`) ; **pas de code** tant que le PO n’a pas tranché. L’UI Piloter envoie déjà le `ControllerFrame`.
 
 ## Classification
 
@@ -95,6 +95,7 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 
 - `pi-setup` plus tard : absorber `enable_halt_sudo.sh`, `enable_wifi_sudo.sh`, `enable_ble_robot_boot.sh`.
 - D-024 reste : `ENERGY_PROBLEM`, hello idle `random_sounds/`, sons Wi‑Fi **en session**.
+- D-025 plus tard : liste + choix de robot + mémoire d’adresse (noms `--name` distincts).
 - Offsets STS interactifs seulement si un axe dérive (zéro Feetech = offsets 0).
 
 ### REMPLACER

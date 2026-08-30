@@ -36,7 +36,18 @@ Hors périmètre : oreilles / antennes (PWM).
 
 **Reste lot 3 :** relancer `bdx-ble-robot` (SIGKILL) pour **entendre** BLE puis Wi‑Fi OK/échec. Valider à l’oreille sur robot.
 
-**Hors périmètre immédiat :** Xbox, vidéo (D-022), reste D-024 (énergie, idle, Wi‑Fi en session).
+**Hors périmètre immédiat :** Xbox, vidéo (D-022), reste D-024 (énergie, idle, Wi‑Fi en session), **D-025** (liste de robots).
+
+---
+
+## Plus tard — Choix de robot BLE (D-025)
+
+**Statut :** décidé, **pas autorisé à coder** maintenant.
+
+- Liste des appareils qui annoncent le service BDX (noms `--name`).
+- Choix dans l’app, puis **mémoire de l’adresse** Bluetooth.
+- Noms uniques par machine (aujourd’hui tous = `Open Duck Mini`).
+- Pas de pairing PIN / pas d’UUID par robot.
 
 ---
 
@@ -58,8 +69,14 @@ Hors périmètre : oreilles / antennes (PWM).
 
 ## Lot 4 — Commandes hors Tests (dont parallèle marche)
 
-**Statut :** pas démarré. **Pas** de manette Xbox (D-018). L’écran **Piloter** envoie déjà `ControllerFrame` v1 (mapping figé dans `protocol.md`) ; il reste à **consommer** ces commandes en parallèle de la marche.
+**Statut :** **découverte**, pas de code. Prompt : `docs/hardware/PROMPT-agent-marche.md`. **Pas** de manette Xbox (D-018).
+
+L’écran **Piloter** envoie déjà `ControllerFrame` v1 (`protocol.md`). La consommation par `RLWalk` / GATT et le **moment d’activation** (init vs UI) sont **à trancher par le PO** après explication.
+
+**IMU :** découvrir les scripts existants (`raw_imu.py` = marche ; `calibrate_imu.py` ; `imu_server` / `imu_client`). Vérification **quand le BDX est on**. **Maintenant : robot off (accus)** — ne rien lancer.
+
+**Hors périmètre immédiat de ce lot :** coder avant que le PO ait compris le processus et adapté l’UI.
 
 ---
 
-**Prochaine étape recommandée :** sur le Pi, SIGKILL + start de `bdx-ble-robot` pour jouer le nouveau hello. **Pas** le lot 2. **Pas** le reste D-024.
+**Prochaine étape recommandée :** sur le Pi, SIGKILL + start de `bdx-ble-robot` pour jouer le nouveau hello. **Pas** le lot 2. **Pas** le reste D-024. **Pas** D-025.
