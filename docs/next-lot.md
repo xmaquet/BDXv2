@@ -28,6 +28,8 @@ Hors périmètre : oreilles / antennes (PWM).
 
 **Canon :** `pi-setup/install.sh`. Plus tard : y absorber `enable_halt_sudo.sh`, `enable_wifi_sudo.sh`, `enable_ble_robot_boot.sh`.
 
+**Cible (D-026), pas maintenant :** migrer le runtime BDXv2 **sous** `pi-setup/` pour que l’install n’ait plus besoin d’aller chercher le paquet dans `Open_Duck_Mini_Runtime/`. Les arbres d’origine restent en référence.
+
 ---
 
 ## Lot 3 — App Android BLE native
@@ -79,4 +81,4 @@ L’écran **Piloter** envoie déjà `ControllerFrame` v1 (`protocol.md`). La co
 
 ---
 
-**Prochaine étape recommandée :** sur le Pi, SIGKILL + start de `bdx-ble-robot` pour jouer le nouveau hello. **Pas** le lot 2. **Pas** le reste D-024. **Pas** D-025.
+**Prochaine étape recommandée :** sur le Pi, SIGKILL + start de `bdx-ble-robot` pour jouer le nouveau hello. **Pas** le lot 2. **Pas** le reste D-024. **Pas** D-025. **Pas** D-026.

@@ -1,8 +1,10 @@
 # pi-setup — install post-OS (Raspberry Pi)
 
-Source **BDXv2** de l’installation après flash OS. Pas un deuxième runtime Python.
+Source **BDXv2** de l’installation après flash OS.
 
-Le package embarqué reste `Open_Duck_Mini_Runtime/` (`pip install -e .`).
+**Aujourd’hui (D-019) :** pas un deuxième runtime Python. Le package embarqué reste `Open_Duck_Mini_Runtime/` (`pip install -e .`).
+
+**Cible (D-026) :** le runtime utile de **cette** version vivra sous `pi-setup/` ; l’install trouvera tout ici. Les arbres d’origine restent pour mémoire. **Ne pas migrer tant que le chantier n’est pas ouvert.**
 
 ## Lancer
 

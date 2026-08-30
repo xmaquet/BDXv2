@@ -73,7 +73,7 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 | `docs/` | Canon + prompts agents |
 | `Open_Duck_Mini/` | Mécanique / sim |
 | `Open_Duck_Mini_Runtime/` | Runtime Pi + app tablette BLE |
-| `pi-setup/` | Orchestration install post-OS (D-019) |
+| `pi-setup/` | Orchestration install post-OS (D-019). **Cible D-026 :** y loger le runtime BDXv2 — **ne pas migrer maintenant** |
 
 ## Cible (roadmap)
 
@@ -94,6 +94,7 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 ### ADAPTER
 
 - `pi-setup` plus tard : absorber `enable_halt_sudo.sh`, `enable_wifi_sudo.sh`, `enable_ble_robot_boot.sh`.
+- D-026 à terme : runtime BDXv2 **sous** `pi-setup/` ; `Open_Duck_Mini_Runtime/` reste en référence. **Ne pas migrer maintenant.**
 - D-024 reste : `ENERGY_PROBLEM`, hello idle `random_sounds/`, sons Wi‑Fi **en session**.
 - D-025 plus tard : liste + choix de robot + mémoire d’adresse (noms `--name` distincts).
 - Offsets STS interactifs seulement si un axe dérive (zéro Feetech = offsets 0).

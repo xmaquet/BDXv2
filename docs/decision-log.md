@@ -261,6 +261,8 @@ L’installation post-OS vit dans **`pi-setup/`** à la racine du monorepo. Ce n
 
 Les scripts héritage sous `Open_Duck_Mini_Runtime/` restent des **wrappers**.
 
+**Cible à terme :** **D-026** (le runtime BDXv2 vivra sous `pi-setup/` ; ceci décrit l’état **actuel**).
+
 ---
 
 ## D-020 — Le robot sert de banc de dev ; install complète plus tard
@@ -371,6 +373,20 @@ L’UUID reste l’identifiant de **famille** (dialecte BDX), pas d’un robot. 
 **Hors ce livrable :** pairing / liaison BLE (PIN, bond) ; UUID différent par robot.
 
 **Ouvert au moment du lot :** reconnecter tout seul au dernier robot, ou toujours montrer la liste (avec « Changer de robot »).
+
+---
+
+## D-026 — Runtime BDXv2 sous `pi-setup/` (cible)
+
+**Statut :** adoptée (2026-08-30, PO) — **à terme, ne pas migrer maintenant**.
+
+Tout le **code utile** qui constitue le **runtime de cette version** (BDXv2) devra vivre sous **`pi-setup/`**. L’install post-OS (D-012) trouvera alors **tout** à cet endroit.
+
+Les **arbres d’origine** (`Open_Duck_Mini_Runtime/`, et le reste amont) **restent** dans le monorepo pour **mémoire ou référence**. On ne les efface pas pour « faire propre ».
+
+**Aujourd’hui (D-019) :** `pi-setup/` n’orchestre que l’install ; le paquet Python est encore `Open_Duck_Mini_Runtime/`.
+
+**Hors ce chantier tant qu’il n’est pas ouvert :** déplacer le code, changer le sparse checkout, réécrire `install.sh` pour un nouveau layout. L’app Android tablette n’est **pas** implicitement déplacée sous `pi-setup/` (ce n’est pas le runtime Pi).
 
 ---
 
