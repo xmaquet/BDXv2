@@ -2,7 +2,7 @@
 
 Logiciel de démonstration autour d’un [Open Duck Mini](https://github.com/apirrone/Open_Duck_Mini) : salons et réunions de bot-makers.
 
-La première version vise à **actionner depuis une tablette Android** les yeux, le projecteur, le haut-parleur et les antennes — pas la marche.
+La première version vise à **actionner depuis une tablette Android** les yeux, le projecteur, le haut-parleur et les antennes — pas la marche. L’app est une **UI native** (BLE) ; l’arrêt du Pi et le Wi‑Fi robot passent aussi par cette tablette.
 
 ## Contenu
 

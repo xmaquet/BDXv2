@@ -329,7 +329,7 @@ L’application tablette est une **UI Android native**. La WebView Capacitor (pr
 
 **Statut :** adoptée (2026-08-29, PO)
 
-L’accueil comporte une zone **Paramètres** (carte, avant Éteindre) pour regrouper des fonctions pratiques. Première fonction : **Wi‑Fi du robot** via le lien BLE déjà établi (D-015), afin de voir le réseau configuré, l’état, les SSID visibles, et de **changer de réseau** sans câble ni Wi‑Fi « maison ».
+L’accueil comporte une zone **Monitoring** (carte, avant Éteindre ; anciennement « Paramètres ») pour regrouper des fonctions pratiques. Première fonction : **Wi‑Fi du robot** via le lien BLE déjà établi (D-015), afin de voir le réseau configuré, l’état, les SSID visibles, et de **changer de réseau** sans câble ni Wi‑Fi « maison ».
 
 **Hors Tests, hors halt.** La **vidéo reste hors BLE** (D-022).
 
@@ -338,6 +338,8 @@ L’accueil comporte une zone **Paramètres** (carte, avant Éteindre) pour regr
 **Protocole :** message dédié `{ "type": "wifi", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Mot de passe en TX uniquement, jamais en RX / logs.
 
 **Pi :** wrapper `bdx-wifi` + `scripts/enable_wifi_sudo.sh` (une fois, hors `pi-setup/install.sh`, D-020). Déploiement robot = `git pull` (ou scp) + sudoers quand le Pi est joignable.
+
+L’écran Monitoring affiche aussi la **santé Pi** (CPU, RAM, température, disque, uptime) via `{ "type": "sys" }`, poll ~8 s seulement tant que l’écran est ouvert. Pas de charge extra ailleurs.
 
 ---
 

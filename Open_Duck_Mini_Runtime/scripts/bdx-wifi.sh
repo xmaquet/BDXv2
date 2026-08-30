@@ -9,6 +9,34 @@ wifi_dev() {
   nmcli -t -f DEVICE,TYPE device status 2>/dev/null | awk -F: '$2=="wifi"{print $1; exit}'
 }
 
+active_ssid() {
+  local conn
+  conn="$(nmcli -g GENERAL.CONNECTION device show "${DEV}" 2>/dev/null | head -n1 || true)"
+  if [[ -z "${conn}" || "${conn}" == "--" ]]; then
+    return 0
+  fi
+  nmcli -g 802-11-wireless.ssid connection show "${conn}" 2>/dev/null || true
+}
+
+profile_for_ssid() {
+  local want="$1"
+  local name typ cur
+  while IFS=: read -r name typ; do
+    [[ "${typ}" == "802-11-wireless" || "${typ}" == "wifi" ]] || continue
+    [[ -z "${name}" ]] && continue
+    cur="$(nmcli -g 802-11-wireless.ssid connection show "${name}" 2>/dev/null || true)"
+    if [[ "${cur}" == "${want}" ]]; then
+      printf '%s\n' "${name}"
+      return 0
+    fi
+  done < <(nmcli -t -f NAME,TYPE connection show)
+  return 1
+}
+
+emit_active_ssid() {
+  printf 'BDX.SSID:%s\n' "$(active_ssid)"
+}
+
 action="${1:-}"
 DEV="$(wifi_dev || true)"
 if [[ -z "${DEV}" ]]; then
@@ -19,12 +47,17 @@ fi
 case "${action}" in
   status)
     nmcli -t -f GENERAL.CONNECTION,GENERAL.STATE,IP4.ADDRESS device show "${DEV}"
+    emit_active_ssid
     printf '%s\n' "---"
     nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
     ;;
   scan)
-    nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}" --rescan yes \
-      || nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
+    emit_active_ssid
+    printf '%s\n' "---"
+    # --rescan yes / rescan sans borne peut bloquer le wrapper. Timeout + courte pause.
+    timeout 5 nmcli device wifi rescan ifname "${DEV}" >/dev/null 2>&1 || true
+    sleep 2
+    nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
     ;;
   prefer)
     ssid="${2:-}"
@@ -50,10 +83,18 @@ case "${action}" in
     fi
     psk=""
     IFS= read -r psk || true
-    if [[ -z "${psk}" ]]; then
+    current="$(active_ssid)"
+    if [[ "${current}" == "${ssid}" ]]; then
+      exit 0
+    fi
+    name="$(profile_for_ssid "${ssid}" || true)"
+    if [[ -n "${name}" ]]; then
+      # Profil déjà connu : on l’active. On ne réécrit pas le mot de passe
+      # (un PSK tapé à tort sur la tablette casserait le profil maison).
+      nmcli connection up "${name}"
+    elif [[ -z "${psk}" ]]; then
       nmcli device wifi connect "${ssid}" ifname "${DEV}"
     else
-      # Residual : nmcli prend le PSK en argument (pas de passwd-file portable).
       nmcli device wifi connect "${ssid}" password "${psk}" ifname "${DEV}"
     fi
     ;;

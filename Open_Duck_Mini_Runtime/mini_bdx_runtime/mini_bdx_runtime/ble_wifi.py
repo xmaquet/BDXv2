@@ -15,7 +15,7 @@ _SUDOERS_HINT = (
     "wifi : wrapper absent. Sur le Pi : "
     "bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_wifi_sudo.sh"
 )
-_MAX_NOTIFY = 400
+_MAX_NOTIFY = 140
 _MAX_NETS = 20
 _SSID_MAX = 32
 _DEFAULT_NAME = "bdx_wifi_default.json"
@@ -81,6 +81,7 @@ def parse_nmcli_device_show(text: str) -> dict[str, Any]:
     conn = None
     state_raw = ""
     ip = None
+    ssid = None
     for raw in text.splitlines():
         if ":" not in raw:
             continue
@@ -93,7 +94,18 @@ def parse_nmcli_device_show(text: str) -> dict[str, Any]:
             state_raw = val
         elif key.startswith("IP4.ADDRESS") and val:
             ip = val.split("/")[0] or None
-    return {"connection": conn, "state_raw": state_raw, "ip": ip}
+        elif key == "BDX.SSID":
+            ssid = None if val in ("", "--") else val
+    return {"connection": conn, "state_raw": state_raw, "ip": ip, "ssid": ssid}
+
+
+def apply_current_ssid(nets: list[dict[str, Any]], current: str | None) -> list[dict[str, Any]]:
+    """Le SSID actif vient du profil NM, pas du cache in-use du scan."""
+    if not current:
+        return nets
+    for net in nets:
+        net["in_use"] = net.get("ssid") == current
+    return nets
 
 
 def map_nm_state(state_raw: str) -> str:
@@ -119,7 +131,7 @@ def chunk_scan(nets: list[dict[str, Any]], max_bytes: int = _MAX_NOTIFY) -> list
     current: list[dict[str, Any]] = []
     for net in nets:
         trial = current + [net]
-        probe = {"type": "wifi_scan", "v": 1, "i": 0, "n": 1, "nets": trial}
+        probe = {"type": "wifi_scan", "v": 1, "g": 0, "i": 0, "n": 1, "ts_ms": 0, "nets": trial}
         if current and len(json.dumps(probe, separators=(",", ":")).encode("utf-8")) > max_bytes:
             parts.append(current)
             current = [net]
@@ -167,6 +179,8 @@ class RobotWifi:
         self._run = runner or _run_wrapper
         self._default_path = Path(default_path) if default_path else Path.home() / _DEFAULT_NAME
         self._auto_fail: set[str] = set()
+        self._op_lock = threading.Lock()
+        self._scan_seq = 0
 
     def pending(self) -> bool:
         with self._lock:
@@ -227,6 +241,10 @@ class RobotWifi:
         tmp.replace(self._default_path)
 
     def _status(self) -> None:
+        with self._op_lock:
+            self._status_locked()
+
+    def _status_locked(self) -> None:
         default = self._load_default()
         try:
             show, wifi_list = self._run("status")
@@ -237,36 +255,46 @@ class RobotWifi:
             self._push(_state(None, "failed", None, None, str(e)[:180], default))
             return
         info = parse_nmcli_device_show(show)
-        nets = annotate_nets(parse_nmcli_wifi_list(wifi_list), default)
+        nets = parse_nmcli_wifi_list(wifi_list)
+        current = info.get("ssid") or None
+        nets = annotate_nets(apply_current_ssid(nets, current), default)
         in_use = next((n for n in nets if n.get("in_use")), None)
-        ssid = (in_use or {}).get("ssid") or info.get("connection")
+        ssid = current or (in_use or {}).get("ssid") or info.get("connection")
         rssi = (in_use or {}).get("rssi")
         state = map_nm_state(info.get("state_raw") or "")
         self._push(_state(ssid, state, info.get("ip"), rssi, "", default))
 
-    def _scan(self) -> None:
+    def _scan(self, auto_join: bool = True) -> None:
         default = self._load_default()
         print("[ble_wifi] scan début", flush=True)
         try:
-            _, wifi_list = self._run("scan")
+            with self._op_lock:
+                head, wifi_list = self._run("scan")
+                current = parse_nmcli_device_show(head).get("ssid")
+                nets = annotate_nets(apply_current_ssid(parse_nmcli_wifi_list(wifi_list), current), default)
+                self._scan_seq += 1
+                seq = self._scan_seq
+                print(f"[ble_wifi] scan {len(nets)} réseaux g={seq}", flush=True)
+                for chunk in chunk_scan(nets):
+                    chunk["g"] = seq
+                    self._push(chunk)
         except FileNotFoundError:
             self._ack("scan", False, _SUDOERS_HINT)
             return
         except Exception as e:
             self._ack("scan", False, str(e)[:180])
             return
-        nets = annotate_nets(parse_nmcli_wifi_list(wifi_list), default)
-        print(f"[ble_wifi] scan {len(nets)} réseaux", flush=True)
-        for chunk in chunk_scan(nets):
-            self._push(chunk)
-        self._maybe_auto_join(nets)
+        if auto_join:
+            self._maybe_auto_join(nets, current)
 
-    def _maybe_auto_join(self, nets: list[dict[str, Any]]) -> None:
+    def _maybe_auto_join(self, nets: list[dict[str, Any]], current: str | None = None) -> None:
         default = self._load_default()
         if not default:
             return
+        if current == default:
+            return
         hit = next((n for n in nets if n.get("ssid") == default), None)
-        if hit is None or hit.get("in_use"):
+        if hit is None:
             return
         if default in self._auto_fail:
             return
@@ -359,6 +387,7 @@ class RobotWifi:
 
     def _join_run(self, ssid: str, psk: str, auto: bool = False) -> None:
         default = self._load_default()
+        ok = False
         try:
             self._run("join", ssid, psk)
         except FileNotFoundError:
@@ -375,10 +404,12 @@ class RobotWifi:
             self._ack("join", False, msg)
         else:
             self._auto_fail.discard(ssid)
-            self._status()
+            ok = True
         finally:
             with self._lock:
                 self._busy = False
+        self._status()
+        # Pas de scan auto après join : un notify trop gros bloquait l’UI en « Scan… ».
 
 
 def _state(
@@ -428,7 +459,19 @@ def _run_wrapper(action: str, ssid: str = "", psk: str = "") -> tuple[str, str]:
             err = (result.stderr or result.stdout or "prefer échoué").strip()
             raise RuntimeError(err[:180] or _SUDOERS_HINT)
         return result.stdout, ""
-    timeout = 40 if action == "scan" else 10
+    if action == "scan":
+        result = subprocess.run(
+            [sudo, "-n", _WRAPPER, "scan"],
+            capture_output=True,
+            text=True,
+            timeout=50,
+        )
+        if result.returncode != 0:
+            err = (result.stderr or result.stdout or "scan échoué").strip()
+            raise RuntimeError(err[:180] or _SUDOERS_HINT)
+        show, _, wifi_list = result.stdout.partition("\n---\n")
+        return show, wifi_list
+    timeout = 10
     cmd = [_WRAPPER, action]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if result.returncode != 0:
@@ -441,8 +484,6 @@ def _run_wrapper(action: str, ssid: str = "", psk: str = "") -> tuple[str, str]:
     if result.returncode != 0:
         err = (result.stderr or result.stdout or "wifi échoué").strip()
         raise RuntimeError(err[:180] or _SUDOERS_HINT)
-    if action == "scan":
-        return "", result.stdout
     show, _, wifi_list = result.stdout.partition("\n---\n")
     return show, wifi_list
 
@@ -467,13 +508,22 @@ def _self_test() -> None:
     assert ranked[0]["ssid"] == "Libre" and ranked[0]["is_default"] is True
     assert ranked[1]["ssid"] == "Maison" and ranked[1]["in_use"] is True
     show = (
-        "GENERAL.CONNECTION:Maison\n"
+        "GENERAL.CONNECTION:netplan-wlan0-Maison\n"
         "GENERAL.STATE:100 (connected)\n"
         "IP4.ADDRESS[1]:192.168.1.12/24\n"
+        "BDX.SSID:Maison\n"
     )
     info = parse_nmcli_device_show(show)
-    assert info["connection"] == "Maison"
+    assert info["connection"] == "netplan-wlan0-Maison"
+    assert info["ssid"] == "Maison"
     assert info["ip"] == "192.168.1.12"
+    stale = (
+        " :Cafe:90:WPA2:2412 MHz\n"
+        "*:Cafe:80:WPA2:2412 MHz\n"
+        " :Maison:70:WPA2:2412 MHz\n"
+    )
+    corrected = apply_current_ssid(parse_nmcli_wifi_list(stale), "Maison")
+    assert [n["ssid"] for n in corrected if n["in_use"]] == ["Maison"]
     assert map_nm_state(info["state_raw"]) == "connected"
     assert map_nm_state("30 (disconnected)") == "disconnected"
     assert map_nm_state("50 (connecting)") == "connecting"
@@ -545,8 +595,13 @@ def _self_test() -> None:
         scan = wifi.pop()
         assert scan["nets"][0]["ssid"] == "Libre"
         assert scan["nets"][0]["is_default"] is True
-        auto = wifi.pop()
-        assert auto and auto["type"] == "wifi_state" and auto["state"] == "connecting"
+        auto = None
+        while wifi.pending():
+            msg = wifi.pop()
+            if msg["type"] == "wifi_state":
+                auto = msg
+                break
+        assert auto and auto["state"] == "connecting"
         assert ("join", "Libre", "") in fake.calls
     print("ble_wifi self-test OK")
 

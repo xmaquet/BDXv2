@@ -19,7 +19,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Paramètres"
+        android:text="Monitoring"
         android:textColor="@color/bs_light"
         android:textSize="28sp"
         android:textStyle="bold" />
@@ -28,9 +28,80 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Réglages du robot. Première fonction : Wi‑Fi via BLE."
+        android:text="Santé du Pi en direct, et Wi‑Fi du robot."
         android:textColor="@color/bs_muted"
         android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@color/bs_dark_2"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Santé du Pi"
+            android:textColor="@color/bs_light"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/sys_cpu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="CPU —"
+            android:textColor="@color/bs_light"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/sys_mem"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Mémoire —"
+            android:textColor="@color/bs_light"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/sys_temp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Température —"
+            android:textColor="@color/bs_light"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/sys_disk"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Disque —"
+            android:textColor="@color/bs_light"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/sys_up"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Allumé —"
+            android:textColor="@color/bs_muted"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/sys_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Mesures demandées seulement ici, toutes les 8 s."
+            android:textColor="@color/bs_muted"
+            android:textSize="13sp" />
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/settings_wifi"

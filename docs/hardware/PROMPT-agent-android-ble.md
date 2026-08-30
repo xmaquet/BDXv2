@@ -18,7 +18,7 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 ## Lire d’abord
 
 - `AGENTS.md`
-- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**, **D-020**, **D-021**, **D-022**, **D-023**)
+- `docs/decision-log.md` (**D-007**, **D-010**, **D-011**, **D-015**, **D-018**, **D-020**, **D-021**, **D-022**, **D-023**, **D-024**)
 - `docs/next-lot.md` (lots 3 et 4)
 - `docs/current-state.md`
 - `Open_Duck_Mini_Runtime/docs/protocol.md` (contrat JSON + UUID GATT)
@@ -39,7 +39,7 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 - **D-011** : HAT 2N2222, GPIO d’origine (yeux D23/D24, projecteur D25, antennes PWM D12/D13). Polarité **active-high vérifiée** au banc SSH.
 - **D-020** : pas d’install complète Pi maintenant ; développer et tester sur le banc existant. Réinstall possible en fin de cycle.
 - **D-022** : UI produit **native** ; WebView / proto Figma abandonnés comme surface ; accueil à menus ; vidéo hors BLE, deux temps (affichage puis IA tablette).
-- **D-023** : carte **Paramètres** ; Wi‑Fi robot via BLE (`type: wifi`). Vidéo reste hors BLE. Deploy Pi = `enable_wifi_sudo.sh` + git pull, hors `pi-setup/install.sh`.
+- **D-023** : carte **Monitoring** ; Wi‑Fi robot via BLE (`type: wifi`). Vidéo reste hors BLE. Deploy Pi = `enable_wifi_sudo.sh` + git pull, hors `pi-setup/install.sh`.
 - Tablette = **central BLE** ; Pi = **périphérique GATT**. Pas de Web Bluetooth dans la WebView.
 - `ControllerFrame` v1 peut rester le fil interne des commandes analogiques / boutons héritage ; l’UI ne doit **pas** ressembler à une Xbox. Évolution de protocole = mise à jour de `protocol.md`, pas silencieuse.
 
@@ -88,7 +88,7 @@ Critère phase A : tablette connectée en BLE ; chaque accessoire v1 actionnable
 ## Périmètre OUI — phase B (vidéo, plus tard)
 
 - Picam **déjà prévue** dans le runtime (`camera.py`, `scripts/cam_test.py`, `picamzero`).
-- L’UI a un **placeholder** `VideoFeed.tsx` (« Will show actual video stream when implemented » / WebRTC).
+- Accueil natif : carte **Vidéo** = placeholder (pas de flux). `android_ui/` / `VideoFeed.tsx` = héritage gelé (D-022).
 - Tu ne commences la vidéo **que** lorsque le PO le demande **et** que la phase A tient.
 
 **Contrainte :** le BLE GATT n’est **pas** un bon tuyau pour un flux vidéo. `camera.py` encode du JPEG base64 et écrit un chemin disque figé (`/home/bdxv2/aze.jpg`) — **ne pas** coller ça tel quel sur RX. Pour la vidéo, proposer un transport adapté (souvent Wi‑Fi : MJPEG / WebRTC / autre), l’arbitrer avec le PO, ne pas décider silencieusement « tout passe en BLE ».
@@ -101,14 +101,14 @@ Critère phase A : tablette connectée en BLE ; chaque accessoire v1 actionnable
 - Réécrire la politique de marche ONNX
 - Caméra / micro comme fonctions v1 (sauf phase B vidéo, sur ordre PO)
 - Reboot comme action UI par défaut ; couple STS avant halt (sauf ordre PO)
+- **D-024** (sons événementiels, hello aléatoire d’inactivité) : **todo**, ne pas coder
 - Git commit / push sauf demande explicite du PO
 - Élargir le contrat métier pour simplifier le code
 
 ## Démarrage
 
-1. Résume en 10 lignes l’état réel (TX/RX, UI encore type manette = écart D-018, **pas** d’arrêt système aujourd’hui).
-2. Propose le **premier lot borné** (souvent : APK + scan/connexion BLE + dump TX/RX, sans figer une UI Xbox). Indique **quand** tu réserves le contrat D-021 dans `protocol.md` (dès le toucher protocole, pas collé à la fin).
-3. Attends l’accord du PO avant de modifier le code.
-4. Lots courts, vérifiables ; à la fin : fichiers touchés, comment builder l’APK, comment lancer `bdx-ble-robot`, comment tester l’arrêt (et le filet SSH).
+1. Lis `docs/current-state.md` et résume l’écart **réel** (ne pas repartir de « pas d’APK / UI manette » : c’est **obsolète**).
+2. Propose le **prochain lot borné** à partir de l’état actuel (souvent : deploy + validation Wi‑Fi D-023, ou branchement des WAV si le PO l’a demandé). Attends l’accord avant de coder.
+3. Lots courts, vérifiables ; à la fin : fichiers touchés, version APK, comment relancer `bdx-ble-robot`.
 
 Si tu ne peux pas flasher la tablette depuis cette machine, dis-le et donne la procédure exacte au PO.

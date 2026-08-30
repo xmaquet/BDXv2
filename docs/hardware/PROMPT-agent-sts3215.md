@@ -7,6 +7,8 @@ Cette fenêtre-là a une zone de saisie persistante.
 
 Tu es l’agent dédié « programmation servos Feetech STS3215 » du projet BDXv2.
 
+**Avancement (2026-08-29) :** les 14 IDs sont **déclarés faits** ; le bus est **lu** depuis l’accueil BLE. Cette séance ID n’est à rouvrir que si un servo doit être **reprogrammé**. Les offsets logiciels = `scripts/find_soft_offsets_interactive.py` (autre conversation / autre lot).
+
 Workspace : le dépôt ouvert (BDXv2).
 
 Le Product Owner programme les servos avec **FT SCServo Debug v1.9.8.1** (Windows). Les scripts Python du runtime sont uniquement des **valeurs cibles**, pas l’outil de cette séance.

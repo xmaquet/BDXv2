@@ -112,6 +112,25 @@ public class MainActivity extends BridgeActivity {
   private int lastWifiRssi = Integer.MIN_VALUE;
   private String lastWifiMessage = "";
   private final ArrayList<JSONObject> lastWifiNets = new ArrayList<>();
+  private final ArrayList<JSONObject> wifiScanBackup = new ArrayList<>();
+  private int wifiScanRxGen;
+
+  private TextView sysCpuView;
+  private TextView sysMemView;
+  private TextView sysTempView;
+  private TextView sysDiskView;
+  private TextView sysUpView;
+  private TextView sysHintView;
+  private int sysPollGen;
+  private double lastSysLoad = Double.NaN;
+  private int lastSysCpu = -1;
+  private int lastSysMem = -1;
+  private int lastSysAvail = -1;
+  private int lastSysTot = -1;
+  private double lastSysTemp = Double.NaN;
+  private int lastSysDisk = -1;
+  private int lastSysUp = -1;
+  private String lastSysMessage = "";
 
   private VirtualStickView stickLeft;
   private VirtualStickView stickRight;
@@ -301,6 +320,104 @@ public class MainActivity extends BridgeActivity {
     screenContainer.addView(view);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     view.findViewById(R.id.settings_wifi).setOnClickListener(v -> showScreen(Screen.WIFI));
+    sysCpuView = view.findViewById(R.id.sys_cpu);
+    sysMemView = view.findViewById(R.id.sys_mem);
+    sysTempView = view.findViewById(R.id.sys_temp);
+    sysDiskView = view.findViewById(R.id.sys_disk);
+    sysUpView = view.findViewById(R.id.sys_up);
+    sysHintView = view.findViewById(R.id.sys_hint);
+    paintSys();
+    startSysPoll();
+  }
+
+  private void startSysPoll() {
+    final int gen = ++sysPollGen;
+    sendSys();
+    txHandler.postDelayed(
+        () -> {
+          if (gen == sysPollGen && current == Screen.SETTINGS) {
+            sendSys();
+          }
+        },
+        600);
+    txHandler.postDelayed(
+        new Runnable() {
+          @Override
+          public void run() {
+            if (gen != sysPollGen || current != Screen.SETTINGS) {
+              return;
+            }
+            sendSys();
+            txHandler.postDelayed(this, 8000);
+          }
+        },
+        8000);
+  }
+
+  private void sendSys() {
+    if (ble == null || !connected || !ble.isLinkReady()) {
+      lastSysMessage = "BLE non prêt — connecte d’abord (bandeau du haut).";
+      paintSys();
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject();
+      o.put("type", "sys");
+      o.put("v", 1);
+      ble.sendNative(o.toString());
+    } catch (Exception e) {
+      lastSysMessage = "Envoi impossible";
+      paintSys();
+    }
+  }
+
+  private void paintSys() {
+    if (sysCpuView != null) {
+      String cpu = lastSysCpu < 0 ? "—" : lastSysCpu + " %";
+      String load = Double.isNaN(lastSysLoad) ? "—" : String.format(Locale.FRANCE, "%.2f", lastSysLoad);
+      sysCpuView.setText("CPU  " + cpu + "   ·   charge " + load);
+    }
+    if (sysMemView != null) {
+      if (lastSysMem < 0 || lastSysTot <= 0) {
+        sysMemView.setText("Mémoire  —");
+      } else {
+        sysMemView.setText(
+            "Mémoire  " + lastSysMem + " %   ·   " + lastSysAvail + " / " + lastSysTot + " Mo libres");
+      }
+    }
+    if (sysTempView != null) {
+      sysTempView.setText(
+          Double.isNaN(lastSysTemp)
+              ? "Température  —"
+              : String.format(Locale.FRANCE, "Température  %.1f °C", lastSysTemp));
+    }
+    if (sysDiskView != null) {
+      sysDiskView.setText(lastSysDisk < 0 ? "Disque  —" : "Disque  " + lastSysDisk + " % occupé");
+    }
+    if (sysUpView != null) {
+      sysUpView.setText(lastSysUp < 0 ? "Allumé  —" : "Allumé  " + formatUptime(lastSysUp));
+    }
+    if (sysHintView != null && lastSysMessage != null && !lastSysMessage.isEmpty()) {
+      sysHintView.setText(lastSysMessage);
+    }
+  }
+
+  private static String formatUptime(int seconds) {
+    if (seconds < 60) {
+      return seconds + " s";
+    }
+    int min = seconds / 60;
+    if (min < 60) {
+      return min + " min";
+    }
+    int h = min / 60;
+    min = min % 60;
+    if (h < 48) {
+      return h + " h " + min + " min";
+    }
+    int d = h / 24;
+    h = h % 24;
+    return d + " j " + h + " h";
   }
 
   private void bindWifi() {
@@ -459,7 +576,7 @@ public class MainActivity extends BridgeActivity {
                 paintWifi();
               }
             },
-            40000);
+            18000);
       } else if (wifiHint != null) {
         wifiHint.setText("Demande d’état envoyée.");
       }
@@ -732,7 +849,16 @@ public class MainActivity extends BridgeActivity {
       if ("wifi_scan".equals(type)) {
         int i = o.optInt("i", 0);
         int n = o.optInt("n", 1);
+        int g = o.optInt("g", 0);
+        if (g > 0 && g < wifiScanRxGen) {
+          return;
+        }
         if (i == 0) {
+          if (g > 0) {
+            wifiScanRxGen = g;
+          }
+          wifiScanBackup.clear();
+          wifiScanBackup.addAll(lastWifiNets);
           lastWifiNets.clear();
         }
         JSONArray nets = o.optJSONArray("nets");
@@ -746,12 +872,53 @@ public class MainActivity extends BridgeActivity {
         }
         if (i >= n - 1) {
           wifiScanning = false;
-          lastWifiMessage = lastWifiNets.isEmpty()
-              ? "Aucun réseau 2,4 GHz visible."
-              : lastWifiNets.size() + " réseaux";
+          if (lastWifiNets.isEmpty() && !wifiScanBackup.isEmpty()) {
+            lastWifiNets.addAll(wifiScanBackup);
+            lastWifiMessage = "Scan incomplet — liste précédente conservée.";
+          } else if (lastWifiNets.isEmpty()) {
+            lastWifiMessage = "Aucun réseau 2,4 GHz visible.";
+          } else {
+            lastWifiMessage = lastWifiNets.size() + " réseaux 2,4 GHz";
+          }
+        } else {
+          final int holdGen = wifiScanGen;
+          txHandler.postDelayed(
+              () -> {
+                if (wifiScanning && holdGen == wifiScanGen) {
+                  wifiScanning = false;
+                  if (!lastWifiNets.isEmpty()) {
+                    lastWifiMessage = lastWifiNets.size() + " réseaux 2,4 GHz";
+                  }
+                  paintWifi();
+                }
+              },
+              2500);
         }
         paintWifi();
       }
+    } catch (Exception ignored) {
+    }
+  }
+
+  private void applySysRx(String text) {
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject(text);
+      if (!"sys".equals(o.optString("type"))) {
+        return;
+      }
+      lastSysLoad = o.has("load") && !o.isNull("load") ? o.optDouble("load") : Double.NaN;
+      lastSysCpu = o.has("cpu") && !o.isNull("cpu") ? o.optInt("cpu") : -1;
+      lastSysMem = o.has("mem") && !o.isNull("mem") ? o.optInt("mem") : -1;
+      lastSysAvail = o.has("avail") && !o.isNull("avail") ? o.optInt("avail") : -1;
+      lastSysTot = o.has("tot") && !o.isNull("tot") ? o.optInt("tot") : -1;
+      lastSysTemp = o.has("temp") && !o.isNull("temp") ? o.optDouble("temp") : Double.NaN;
+      lastSysDisk = o.has("disk") && !o.isNull("disk") ? o.optInt("disk") : -1;
+      lastSysUp = o.has("up") && !o.isNull("up") ? o.optInt("up") : -1;
+      lastSysMessage = o.optString("message", "Mesures Pi · lecture /proc, 8 s.");
+      paintSys();
     } catch (Exception ignored) {
     }
   }
@@ -920,6 +1087,14 @@ public class MainActivity extends BridgeActivity {
     wifiIpView = null;
     wifiList = null;
     wifiScan = null;
+    wifiDefaultView = null;
+    sysCpuView = null;
+    sysMemView = null;
+    sysTempView = null;
+    sysDiskView = null;
+    sysUpView = null;
+    sysHintView = null;
+    sysPollGen++;
     stickLeft = null;
     stickRight = null;
     pause = false;
@@ -987,16 +1162,8 @@ public class MainActivity extends BridgeActivity {
         name ->
             runOnUiThread(
                 () -> {
-                  connecting = false;
-                  connected = true;
-                  refreshBleBanner();
-                  refreshPilotStatus();
-                  if (current == Screen.TESTS) {
-                    sendTest("list_sounds");
-                  }
-                  if (current == Screen.WIFI) {
-                    sendWifi("status");
-                    sendWifi("scan");
+                  if (bleBannerText != null && connecting) {
+                    bleBannerText.setText("BLE ASSOCIATION…");
                   }
                 }),
         err ->
@@ -1034,7 +1201,19 @@ public class MainActivity extends BridgeActivity {
     runOnUiThread(
         () -> {
           connected = isConnected;
-          if (!isConnected) {
+          if (isConnected) {
+            connecting = false;
+            if (current == Screen.TESTS) {
+              sendTest("list_sounds");
+            }
+            if (current == Screen.WIFI) {
+              sendWifi("status");
+              sendWifi("scan");
+            }
+            if (current == Screen.SETTINGS) {
+              sendSys();
+            }
+          } else {
             connecting = false;
             lastStsBus = null;
             lastStsMsg = "";
@@ -1042,11 +1221,13 @@ public class MainActivity extends BridgeActivity {
             lastBusV = Double.NaN;
             wifiScanning = false;
             lastWifiMessage = "BLE déconnecté.";
+            lastSysMessage = "BLE déconnecté.";
           }
           refreshBleBanner();
           refreshPilotStatus();
           paintHomeSts();
           paintWifi();
+          paintSys();
         });
   }
 
@@ -1059,6 +1240,7 @@ public class MainActivity extends BridgeActivity {
           applyStatusRx(text);
           applyTestRx(text);
           applyWifiRx(text);
+          applySysRx(text);
         });
   }
 

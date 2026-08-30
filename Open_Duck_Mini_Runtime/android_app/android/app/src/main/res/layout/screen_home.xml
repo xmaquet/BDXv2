@@ -243,7 +243,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Paramètres"
+                        android:text="Monitoring"
                         android:textColor="@color/bs_light"
                         android:textSize="22sp"
                         android:textStyle="bold" />
@@ -252,7 +252,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Wi‑Fi du robot, puis d’autres réglages"
+                        android:text="Santé du Pi et Wi‑Fi du robot"
                         android:textColor="#DEE2E6"
                         android:textSize="14sp" />
                 </LinearLayout>

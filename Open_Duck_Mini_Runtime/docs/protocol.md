@@ -222,6 +222,30 @@ Réponses RX :
 
 Le robot peut aussi renvoyer un `type: log` (`message` = résultat).
 
+### Santé Pi (Monitoring)
+
+Télémétrie **à la demande**, uniquement quand l’écran Monitoring est ouvert (poll ~8 s). Lectures `/proc` / `statvfs` / thermal sysfs — **pas** de `vcgencmd`, pas de processus listés.
+
+```json
+{ "type": "sys", "v": 1 }
+```
+
+Réponse RX (JSON court, MTU BLE) :
+
+```json
+{ "type": "sys", "v": 1, "load": 0.42, "cpu": 18, "mem": 41, "avail": 280, "tot": 445, "temp": 54.1, "disk": 38, "up": 86400 }
+```
+
+| Champ | Sens |
+|--------|------|
+| `load` | charge 1 min (`/proc/loadavg`) |
+| `cpu` | % CPU depuis le poll précédent (`/proc/stat`). **Absent** au premier échantillon. |
+| `mem` | % RAM utilisée (`MemAvailable`) |
+| `avail` / `tot` | Mo disponibles / totaux |
+| `temp` | °C SoC, ou `null` |
+| `disk` | % occupé de `/` |
+| `up` | secondes depuis boot |
+
 ### Wi‑Fi robot (D-023)
 
 Configuration **Wi‑Fi du Pi** via BLE, pour changer de réseau sans câble. **Pas** un `ControllerFrame`, **pas** `type: test`. Le lien tablette ↔ robot **reste BLE** pendant l’association.
@@ -255,7 +279,7 @@ Réponses RX :
 `sec` : `open` | `psk`.  
 `ssid` / `ip` / `rssi` peuvent être `null` si inconnus.
 
-Scan **asynchrone** : `scan` → `wifi_ack` immédiat, puis un ou plusieurs `wifi_scan` (`i` / `n`, découpage MTU). L’UI concatène. `n >= 1` ; une liste vide = un chunk `nets: []`.
+Scan **asynchrone** : `scan` → `wifi_ack` immédiat, puis un ou plusieurs `wifi_scan` (`i` / `n`, découpage **≤ ~140 octets** pour passer le MTU BLE). Champ optionnel `g` : génération du scan (l’UI ignore un scan plus ancien). L’UI concatène. `n >= 1` ; une liste vide = un chunk `nets: []` (l’UI conserve alors la liste précédente si elle n’était pas vide).
 
 Échec d’association : `wifi_state.state = failed` (et/ou `wifi_ack.accepted = false`). Pas de reconnexion magique vers un réseau quelconque : seule l’association vers le **SSID par défaut**, s’il est visible et déjà connu de NetworkManager, est automatique après un scan.
 

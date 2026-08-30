@@ -91,6 +91,12 @@ class RobotBlePlugin : Plugin() {
 
     private var lastSendMs: Long = 0
     private var estopEnabled: Boolean = false
+    private var uiLinkUp: Boolean = false
+    private var rssiFailStreak: Int = 0
+    private var writeFailStreak: Int = 0
+    private var linkProbePosted: Boolean = false
+    private var reconnectEpoch: Int = 0
+    private val linkProbeIntervalMs = 2000L
 
     private val watchdogIntervalMs = 200L
     private val watchdogTimeoutMs = 500L
@@ -243,7 +249,7 @@ class RobotBlePlugin : Plugin() {
     fun disconnectNative() {
         autoReconnect = false
         disconnectInternal()
-        nativeOnStatus?.onStatus(false)
+        notifyLink(false)
     }
 
     fun sendNative(payload: String) {
@@ -361,31 +367,24 @@ class RobotBlePlugin : Plugin() {
                     } catch (_: SecurityException) {
                     }
                 }
-                notifyListeners("status", JSObject().put("connected", true))
-                mainHandler.post { nativeOnStatus?.onStatus(true) }
+                rssiFailStreak = 0
+                scheduleLinkProbe()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
-                txChar = null
-                rxChar = null
-                writing = false
-                rxReady = false
-                cccdPending = false
-                notificationsStarted = false
-                mtu = 23
-                servicesDiscovered = false
-                writeQueue.clear()
-                Logger.warn("RobotBle GATT disconnected status=$status")
-                try {
-                    g.close()
-                } catch (_: Exception) {
-                }
-                if (gatt === g) {
-                    gatt = null
-                }
-                notifyListeners("status", JSObject().put("connected", false))
-                mainHandler.post { nativeOnStatus?.onStatus(false) }
-                if (autoReconnect) {
-                    scheduleReconnect()
-                }
+                handlePeerGone(g, status)
+            }
+        }
+
+        override fun onReadRemoteRssi(g: BluetoothGatt, rssi: Int, status: Int) {
+            if (g !== gatt) return
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                rssiFailStreak = 0
+                return
+            }
+            rssiFailStreak++
+            emitLog("RSSI status=$status fail=$rssiFailStreak")
+            if (rssiFailStreak >= 2) {
+                emitLog("Lien BLE perdu (Pi coupé ou hors portée)")
+                handlePeerGone(g, status)
             }
         }
 
@@ -436,6 +435,7 @@ class RobotBlePlugin : Plugin() {
 
         override fun onCharacteristicWrite(g: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                writeFailStreak = 0
                 completeWrite()
                 return
             }
@@ -444,6 +444,10 @@ class RobotBlePlugin : Plugin() {
                 return
             }
             Logger.warn("RobotBle write status=$status")
+            if (status == 8 || status == 19 || status == 22 || status == 133 || status == 257) {
+                handlePeerGone(g, status)
+                return
+            }
             completeWrite()
         }
 
@@ -518,6 +522,7 @@ class RobotBlePlugin : Plugin() {
             emitLog("Caractéristique TX absente")
         } else {
             emitLog("Lien prêt (TX)")
+            notifyLink(true)
         }
         mainHandler.post { writePendingIfIdle() }
     }
@@ -614,8 +619,92 @@ class RobotBlePlugin : Plugin() {
         }
     }
 
+    private fun notifyLink(up: Boolean) {
+        if (up && uiLinkUp) return
+        uiLinkUp = up
+        notifyListeners("status", JSObject().put("connected", up))
+        mainHandler.post { nativeOnStatus?.onStatus(up) }
+    }
+
+    private fun handlePeerGone(g: BluetoothGatt, status: Int) {
+        val reconnect = autoReconnect && uiLinkUp
+        stopLinkProbe()
+        Logger.warn("RobotBle lien perdu status=$status")
+        txChar = null
+        rxChar = null
+        writing = false
+        rxReady = false
+        cccdPending = false
+        notificationsStarted = false
+        servicesDiscovered = false
+        mtu = 23
+        writeQueue.clear()
+        pendingPayloads.clear()
+        try {
+            g.close()
+        } catch (_: Exception) {
+        }
+        if (gatt === g) {
+            gatt = null
+        }
+        notifyLink(false)
+        if (reconnect) {
+            scheduleReconnect()
+        }
+    }
+
+    private val linkProbe = object : Runnable {
+        override fun run() {
+            linkProbePosted = false
+            val g = gatt ?: return
+            if (!hasConnectPermission()) {
+                scheduleLinkProbe()
+                return
+            }
+            try {
+                val mgr = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+                val state = mgr.getConnectionState(g.device, BluetoothProfile.GATT)
+                if (state != BluetoothProfile.STATE_CONNECTED) {
+                    emitLog("Lien BLE perdu (état=$state)")
+                    handlePeerGone(g, state)
+                    return
+                }
+            } catch (_: SecurityException) {
+            }
+            try {
+                if (!g.readRemoteRssi()) {
+                    rssiFailStreak++
+                    if (rssiFailStreak >= 2) {
+                        emitLog("Lien BLE perdu (RSSI refusé)")
+                        handlePeerGone(g, -1)
+                        return
+                    }
+                }
+            } catch (_: Exception) {
+                rssiFailStreak++
+            }
+            scheduleLinkProbe()
+        }
+    }
+
+    private fun scheduleLinkProbe() {
+        if (gatt == null || linkProbePosted) return
+        linkProbePosted = true
+        mainHandler.postDelayed(linkProbe, linkProbeIntervalMs)
+    }
+
+    private fun stopLinkProbe() {
+        linkProbePosted = false
+        rssiFailStreak = 0
+        writeFailStreak = 0
+        mainHandler.removeCallbacks(linkProbe)
+    }
+
     private fun scheduleReconnect() {
+        val epoch = ++reconnectEpoch
         mainHandler.postDelayed({
+            if (epoch != reconnectEpoch) return@postDelayed
+            if (gatt != null) return@postDelayed
             val adapter = bluetoothAdapter ?: return@postDelayed
             val address = targetAddress ?: return@postDelayed
             if (!hasConnectPermission()) return@postDelayed
@@ -632,10 +721,14 @@ class RobotBlePlugin : Plugin() {
     fun disconnect(call: PluginCall) {
         autoReconnect = false
         disconnectInternal()
+        notifyLink(false)
         call.resolve()
     }
 
     private fun disconnectInternal() {
+        stopLinkProbe()
+        reconnectEpoch++
+        uiLinkUp = false
         stopScan()
         try {
             gatt?.disconnect()
@@ -744,8 +837,14 @@ class RobotBlePlugin : Plugin() {
             }
             if (!queued) {
                 writing = false
+                writeFailStreak++
+                if (writeFailStreak >= 3 && gatt != null) {
+                    emitLog("Lien BLE perdu (écritures refusées)")
+                    handlePeerGone(g, -1)
+                }
                 return
             }
+            writeFailStreak = 0
             mainHandler.postDelayed({
                 if (writing && epoch == writeEpoch) {
                     completeWrite()

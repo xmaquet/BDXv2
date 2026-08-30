@@ -14,7 +14,7 @@
         style="@style/Bdx.Btn.Back"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Paramètres" />
+        android:text="Monitoring" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -30,7 +30,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Appui long sur un réseau pour le marquer par défaut : le robot s’y reconnecte en priorité s’il est visible."
+        android:text="Appui long : réseau par défaut. Liste = 2,4 GHz seulement (le Pi n’entend pas le 5 GHz). Un partage de connexion téléphone doit être en 2,4 GHz."
         android:textColor="@color/bs_muted"
         android:textSize="14sp" />
 
