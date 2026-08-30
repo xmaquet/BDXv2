@@ -12,7 +12,7 @@ Roadmap révisée (2026-08-24, PO). Point 2026-08-29.
 
 **Statut :** IDs 10–14, 20–24, 30–33 **déclarés programmés** (2026-08-26). Bus **lu sur robot** (2026-08-28) : 14/14, ~7,7 V. Guide : `docs/hardware/sts3215-scservo-debug.md`.
 
-**Offsets :** script interactif `Open_Duck_Mini_Runtime/scripts/find_soft_offsets_interactive.py` **écrit**. Calibration **14 axes non déclarée faite**.
+**Offsets :** `joints_offsets` **tous à 0** (Pi `~/duck_config.json` = modèle GitHub). **Volontaire** : zéro méca posé dans Feetech. Script interactif disponible seulement si un axe dérive.
 
 Hors périmètre : oreilles / antennes (PWM).
 
@@ -38,15 +38,16 @@ Hors périmètre : oreilles / antennes (PWM).
 
 **Reste lot 3 :** valider Wi‑Fi BLE **sur robot** (`git pull` + `enable_wifi_sudo.sh` + restart GATT).
 
-**Hors périmètre immédiat :** Xbox, vidéo (D-022), **sons D-024** (ne pas coder).
+**Hors périmètre immédiat :** Xbox, vidéo (D-022), reste D-024 (énergie, idle).
 
 ---
 
-## Plus tard — Sons D-024 (todo, ne pas démarrer)
+## Plus tard — Sons D-024 (suite)
 
-**Statut :** décidé, **pas autorisé à coder**.
+**Statut :** init Wi‑Fi **faite**. Le reste : **pas autorisé à coder** maintenant.
 
-- Jouer `WIFI_OKAY` / `WIFI_PROBLEM` / `ENERGY_PROBLEM` sur les événements correspondants.
+- `WIFI_OKAY` / `WIFI_PROBLEM` à l’**init hello** : **fait** (2026-08-30). Reste : les rejouer sur join / perte de lien **en cours de session**.
+- `ENERGY_PROBLEM` sur événement tension.
 - `random_sounds/` : hello **aléatoire** + mimiques + yeux, seulement après une **inactivité durable** (seuil à définir alors).
 - Préalable technique : charger le sous-dossier (aujourd’hui `sounds.py` ne le fait pas). Commiter les WAV quand le PO le demandera.
 
@@ -64,4 +65,4 @@ Hors périmètre : oreilles / antennes (PWM).
 
 ---
 
-**Prochaine étape recommandée :** déployer et valider le Wi‑Fi BLE (D-023) sur le Pi quand il est joignable. **Pas** le lot 2. **Pas** D-024.
+**Prochaine étape recommandée :** déployer et valider le Wi‑Fi BLE (D-023) sur le Pi (les WAV `WIFI_*` doivent être sur le robot pour l’init). **Pas** le lot 2. D-024 : init Wi‑Fi **faite** ; le reste (énergie, idle) **pas maintenant**.

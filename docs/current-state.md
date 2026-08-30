@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-30 (menu Monitoring).
+Dernière mise à jour : 2026-08-30 (offsets logiciels = 0, zéro Feetech).
 
 ## Situation du projet
 
@@ -22,7 +22,7 @@ Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/instal
 | Lecture bus STS | **Validée PO** (2026-08-28) : accueil **STS OK · 7,7 V** (14/14, pyserial `/dev/ttyACM0`) |
 | Lot 3 app BLE native (D-022) | APK **1.3.22** : accueil, Tests, halt, Monitoring (santé Pi + Wi‑Fi) |
 | Halt UI (D-021) | Contrat + envoi + `poweroff` Pi **validés sur robot** |
-| Hello boot (D-008) | In-process GATT ; son BLE prêt `BLE_OKAY_mini_BDX.wav` |
+| Hello boot (D-008) | In-process GATT ; son BLE prêt ; **Wi‑Fi init** OK/échec (D-024 partiel) |
 | Autostart GATT | `enable_ble_robot_boot.sh` (une fois) |
 | Wi‑Fi BLE (D-023) | **Déployé** sur le banc (scan / join / défaut) |
 
@@ -44,7 +44,7 @@ Accueil : Piloter · Tests · Vidéo (placeholder) · Monitoring · Éteindre.
 
 IDs 10–14, 20–24, 30–33 programmés (FT SCServo Debug). Bus lu depuis le GATT (pyserial, pas rustypot pour la télémétrie accueil).
 
-**Offsets :** scripts **écrits** — `find_soft_offsets_interactive.py` (un servo à la fois, pose manuelle → `duck_config.json`). Ancien test chevilles redirige vers ce script. **Calibration complète 14 axes non déclarée faite.**
+**Offsets logiciels :** `~/duck_config.json` sur le Pi = **tous à 0**, identique au modèle GitHub `Open_Duck_Mini_Runtime/example_config.json`. **Volontaire (2026-08-30, PO)** : le zéro mécanique a été posé dans le logiciel Feetech, donc pas de correction runtime. Le script interactif reste là si un axe doit être repris plus tard.
 
 Ce n’est pas encore le zéro marche / la locomotion.
 
@@ -58,8 +58,8 @@ Ce n’est pas encore le zéro marche / la locomotion.
 
 | Fichier | Rôle à terme |
 |---------|----------------|
-| `WIFI_OKAY_mini_BDX.wav` | Événement Wi‑Fi OK |
-| `WIFI_PROBLEM_mini_BDX.wav` | Événement problème Wi‑Fi |
+| `WIFI_OKAY_mini_BDX.wav` | **Init** : associé au défaut ; aussi événement Wi‑Fi plus tard |
+| `WIFI_PROBLEM_mini_BDX.wav` | **Init** : défaut en échec (UI Paramètres) |
 | `ENERGY_PROBLEM_mini_BDX.wav` | Événement problème énergie / tension |
 | `random_sounds/*.wav` | Hello **aléatoire** + mimiques + yeux, **inactivité durable** (pas le hello boot) |
 
@@ -110,4 +110,4 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 
 - Licence runtime amont.
 - Restart systemd `bdx-ble-robot` : le process ignore SIGTERM (peut rester coincé jusqu’au SIGKILL).
-- Calibration offsets une fois posée la mécanique.
+- Calibration offsets logiciels : **pas requise** tant que le zéro Feetech tient (`joints_offsets` = 0).

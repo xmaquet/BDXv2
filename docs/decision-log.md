@@ -107,7 +107,7 @@ Le **live tablette d’abord**. Les séquences suivent, dans la même phase prod
 
 **Précision D-010 :** le live se matérialise d’abord par le **mode test** (fonctions une à une). Les « séquences » ne sont pas le mode normal : le mode normal = expressions **pendant** la marche, comme les scripts d’origine.
 
-**Avancement (2026-08-29) :** hello au démarrage de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`), **in-process** GATT. Contournement : `--no-hello`. Dès que la pub BLE est active : `BLE_OKAY_mini_BDX.wav`. Autostart : `scripts/enable_ble_robot_boot.sh`.
+**Avancement (2026-08-30) :** hello au démarrage de `bdx-ble-robot` (3 clignements, 4 oscillations d’antennes, `happy1.wav`), **in-process** GATT. Contournement : `--no-hello`. Dès que la pub BLE est active : `BLE_OKAY_mini_BDX.wav`, puis attente Wi‑Fi défaut (NM, ~20 s) : `WIFI_OKAY` si associé, sinon `WIFI_PROBLEM` (connexion via l’UI). Autostart : `scripts/enable_ble_robot_boot.sh`.
 
 ---
 
@@ -187,7 +187,7 @@ Les servos corps / tête **STS3215** se programment avec le logiciel **FT SCServ
 
 Ce n’est **pas** le même bus que les servos d’oreilles (PWM GPIO D12/D13 dans `antennas.py`).
 
-**Avancement (2026-08-29) :** les 14 IDs sont **déclarés programmés** (offset EEPROM 0, D=0, Lock=1). Bus **lu sur robot** (2026-08-28, PO) : 14/14, ~7,7 V (pyserial, accueil BLE). Script d’offsets interactif **écrit** (`find_soft_offsets_interactive.py`). Calibration des 14 axes **pas déclarée faite**. Pas de marche.
+**Avancement (2026-08-30) :** les 14 IDs sont **déclarés programmés** (offset EEPROM 0, D=0, Lock=1). Bus **lu sur robot** (2026-08-28, PO) : 14/14, ~7,7 V (pyserial, accueil BLE). **Zéro mécanique posé dans FT SCServo Debug** : `~/duck_config.json` / `example_config.json` gardent `joints_offsets` **tous à 0**. Ce n’est pas un oubli. Script `find_soft_offsets_interactive.py` reste disponible si un axe dérive plus tard. Pas de marche.
 
 ---
 
@@ -357,7 +357,7 @@ Les WAV ajoutés (hors catalogue Tests héritage) ont un rôle produit :
 
 Ce n’est **pas** le hello de boot (D-008). Ce n’est **pas** un son Tests à la demande.
 
-**Hors périmètre immédiat :** câbler les événements, le chargeur récursif, le timer d’inactivité, le seuil « durable ». À trancher au moment du lot.
+**Avancement (2026-08-30) :** `WIFI_OKAY` / `WIFI_PROBLEM` joués à l’**init** (après le son BLE), selon l’association du profil défaut. **Toujours plus tard :** `ENERGY_PROBLEM`, hello aléatoire `random_sounds/`, chargeur récursif, seuil d’inactivité.
 
 ---
 

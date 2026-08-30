@@ -75,14 +75,16 @@ def _try_apply_json_frames(
 
 
 def _spawn_ble_ready_sound() -> None:
-    """Signal audio : BLE annoncé, en attente de connexion tablette."""
+    """Signal audio : BLE annoncé, puis résultat Wi‑Fi d’init (défaut NM)."""
     try:
-        from mini_bdx_runtime.boot_hello import run_ble_ready_sound
+        from mini_bdx_runtime.boot_hello import run_ble_ready_sound, run_wifi_init_sound
 
         run_ble_ready_sound()
         print("[ble_gatt] BLE ready sound: fin", flush=True)
+        run_wifi_init_sound()
+        print("[ble_gatt] Wi‑Fi init sound: fin", flush=True)
     except Exception as e:
-        print(f"[ble_gatt] BLE ready sound: échec {e}", flush=True)
+        print(f"[ble_gatt] BLE/Wi‑Fi ready sound: échec {e}", flush=True)
 
 
 def _spawn_boot_hello() -> None:
