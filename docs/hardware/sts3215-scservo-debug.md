@@ -233,6 +233,8 @@ Consigne brute **0** au lieu du milieu. Couple off, ne pas forcer. Reprendre à 
 Aujourd’hui : ID + baud + PID + mode + horn approximatif.  
 **Ne pas** écrire l’offset (addr 31) « à l’œil ».
 
+**État BDXv2 (2026-08-30, PO) :** zéro mécanique posé dans FT SCServo Debug ; `joints_offsets` dans `~/duck_config.json` **tous à 0**. Pas de campagne d’offsets logiciels tant que ce zéro tient.
+
 ---
 
 ## 10. Sources

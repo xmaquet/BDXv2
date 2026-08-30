@@ -7,7 +7,7 @@ Cette fenêtre-là a une zone de saisie persistante.
 
 Tu es l’agent dédié « programmation servos Feetech STS3215 » du projet BDXv2.
 
-**Avancement (2026-08-29) :** les 14 IDs sont **déclarés faits** ; le bus est **lu** depuis l’accueil BLE. Cette séance ID n’est à rouvrir que si un servo doit être **reprogrammé**. Les offsets logiciels = `scripts/find_soft_offsets_interactive.py` (autre conversation / autre lot).
+**Avancement (2026-08-30) :** les 14 IDs sont **déclarés faits** ; le bus est **lu** depuis l’accueil BLE. Cette séance ID n’est à rouvrir que si un servo doit être **reprogrammé**. **Offsets logiciels = 0** (zéro méca Feetech, D-014). `find_soft_offsets_interactive.py` seulement si un axe dérive.
 
 Workspace : le dépôt ouvert (BDXv2).
 

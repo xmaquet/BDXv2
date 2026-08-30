@@ -1,12 +1,12 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-30 (offsets logiciels = 0, zéro Feetech).
+Dernière mise à jour : 2026-08-30 (APK 1.3.23 Piloter, hello Wi‑Fi `124aeb1`).
 
 ## Situation du projet
 
-**Brownfield cadrée.** Dépôt : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2) — branche `main`, HEAD `fb5f796`.
+**Brownfield cadrée.** Dépôt : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2) — branche `main`, HEAD `124aeb1`.
 
-Le Pi Zero 2W a un **OS Lite 64-bit**. SSH joignable (user / hostname `bdxv2`, IP constatée `192.168.10.131`). Clone `~/BDXv2`. Venv banc conservé.
+Le Pi Zero 2W a un **OS Lite 64-bit**. SSH : user / hostname `bdxv2`. IP **constatée 2026-08-30 : `192.168.10.132`** (DHCP ; a déjà été `192.168.10.131`). Clone `~/BDXv2` **à jour** (`git pull` fast-forward). Venv banc conservé.
 
 Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/install.sh` est **écrite, pas exécutée**.
 
@@ -20,11 +20,11 @@ Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/instal
 | Banc SSH accessoires (D-016) | **Clos** — yeux, projecteur, HP, antennes validés (polarité **active-high**) |
 | IDs STS3215 (D-014) | 14 IDs **déclarés programmés** |
 | Lecture bus STS | **Validée PO** (2026-08-28) : accueil **STS OK · 7,7 V** (14/14, pyserial `/dev/ttyACM0`) |
-| Lot 3 app BLE native (D-022) | APK **1.3.22** : accueil, Tests, halt, Monitoring (santé Pi + Wi‑Fi) |
+| Lot 3 app BLE native (D-022) | APK **1.3.23** : accueil, Piloter, Tests, halt, Monitoring |
 | Halt UI (D-021) | Contrat + envoi + `poweroff` Pi **validés sur robot** |
-| Hello boot (D-008) | In-process GATT ; son BLE prêt ; **Wi‑Fi init** OK/échec (D-024 partiel) |
-| Autostart GATT | `enable_ble_robot_boot.sh` (une fois) |
-| Wi‑Fi BLE (D-023) | **Déployé** sur le banc (scan / join / défaut) |
+| Hello boot (D-008) | In-process : yeux / antennes / `happy1` ; `BLE_OKAY` ; puis **Wi‑Fi init** `WIFI_OKAY` / `WIFI_PROBLEM` |
+| Autostart GATT | `enable_ble_robot_boot.sh` (une fois). SIGTERM souvent ignoré → SIGKILL pour relancer |
+| Wi‑Fi BLE (D-023) | **Déployé** sur le banc (scan / join / défaut). WAV init **sur le Pi** |
 
 ## App tablette (D-015, D-018, D-022)
 
@@ -32,11 +32,13 @@ Surface produit = **UI Android native** (accueil à cartes). WebView / proto Fig
 
 Accueil : Piloter · Tests · Vidéo (placeholder) · Monitoring · Éteindre.
 
-**FAIT banc / robot :** scan/connexion GATT ; TX `ControllerFrame` ; RX notify ; Tests accessoires (WAV nommés, style 2 s) ; halt avec confirmation ; badges STS + tension ; hello boot.
+**FAIT banc / robot :** scan/connexion GATT ; TX `ControllerFrame` ; RX notify ; Tests accessoires ; halt ; badges STS + tension ; hello boot + sons BLE/Wi‑Fi d’init **dans le dépôt et sur le clone Pi**.
 
-**Monitoring — santé Pi :** CPU %, charge 1 min, RAM, température SoC, disque `/`, uptime. Poll BLE `{ "type": "sys" }` ~8 s **seulement** tant que l’écran est ouvert. Lectures `/proc` / sysfs, pas de `vcgencmd`. APK **1.3.22**.
+**Piloter (APK 1.3.23) :** contrat `ControllerFrame` v1 (héritage Xbox, D-018). Rangée haute : **Ant. G** · Tempo +/− · **Ant. D** (G à gauche, D à droite). Sticks **Marche** et **Rotation** alignés. Pause=A, Son=B, Proj.=X, Tête=Y, Rythme=LB, Tempo=croix, Ant. G=`rt`, Ant. D=`lt`, Stop=`estop`. RB non utilisé. Mapping détaillé : `Open_Duck_Mini_Runtime/docs/protocol.md`. La marche n’est **pas** lancée depuis l’app (lot 4).
 
-**Wi‑Fi robot (D-023) :** protocole + UI + Pi déployés sur le banc (scan / join / défaut). Validation hotspot 2,4 GHz en cours selon le réseau.
+**Monitoring — santé Pi :** CPU %, charge 1 min, RAM, température SoC, disque `/`, uptime. Poll `{ "type": "sys" }` ~8 s si l’écran est ouvert.
+
+**Wi‑Fi robot (D-023) :** scan / join / défaut **sur le banc**. Hello init : après `BLE_OKAY`, attente ~20 s NM → `WIFI_OKAY` ou `WIFI_PROBLEM` (alors Monitoring). **Pour entendre le nouveau hello :** relancer `bdx-ble-robot` (SIGKILL) — le `git pull` ne recharge pas le process.
 
 **Pas encore :** commandes « hors Tests » / parallèle marche (lot 4) ; vidéo (D-022, hors BLE).
 
@@ -50,20 +52,16 @@ Ce n’est pas encore le zéro marche / la locomotion.
 
 ## Audio
 
-**Suivis Git (racine `assets/`) :** `happy1–3`, `beep1–2`, `lamp` / `lamp2` / `lamp3`, `motor`, `BLE_OKAY_mini_BDX.wav`.
+**Suivis Git (racine `assets/`) :** `happy1–3`, `beep1–2`, `lamp` / `lamp2` / `lamp3`, `motor`, `BLE_OKAY`, `WIFI_OKAY`, `WIFI_PROBLEM`, `ENERGY_PROBLEM`. Plus `random_sounds/` (3 WAV). **Présents sur le Pi** après `git pull` du 2026-08-30.
 
-`sounds.py` charge **uniquement** les `.wav` à la racine de `assets/` (pas les sous-dossiers).
+`sounds.py` charge **uniquement** les `.wav` à la racine (pas `random_sounds/`).
 
-**Rôle produit (D-024, todo — ne pas coder) :**
-
-| Fichier | Rôle à terme |
-|---------|----------------|
-| `WIFI_OKAY_mini_BDX.wav` | **Init** : associé au défaut ; aussi événement Wi‑Fi plus tard |
-| `WIFI_PROBLEM_mini_BDX.wav` | **Init** : défaut en échec (UI Paramètres) |
-| `ENERGY_PROBLEM_mini_BDX.wav` | Événement problème énergie / tension |
-| `random_sounds/*.wav` | Hello **aléatoire** + mimiques + yeux, **inactivité durable** (pas le hello boot) |
-
-**Non suivis (2026-08-29, working tree).** Racine : chargés par `Sounds` dès qu’ils sont sur le Pi, **aucun événement ne les joue**. `random_sounds/` : **non chargé**.
+| Fichier | État |
+|---------|------|
+| `BLE_OKAY_mini_BDX.wav` | **Fait** — pub BLE |
+| `WIFI_OKAY` / `WIFI_PROBLEM` | **Fait à l’init** (D-008 / D-024). Rejouer en session = plus tard |
+| `ENERGY_PROBLEM_mini_BDX.wav` | **Todo** — événement tension |
+| `random_sounds/*.wav` | **Todo** — hello aléatoire + mimiques + yeux, inactivité durable |
 
 Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2-now.png` (hors canon).
 
@@ -81,24 +79,23 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 
 1. OS neuf + SSH — **fait**.
 2. Script d’install (`pi-setup/`) — **écrit** ; exécution **reportée** (D-020).
-3. App BLE native — **tenue** pour Tests / halt / accueil STS ; Wi‑Fi **à déployer et valider** ; vidéo plus tard.
-4. Commandes hors Tests (dont parallèle marche) — **pas démarré**.
+3. App BLE native — **tenue** (Tests, halt, accueil STS, Monitoring, Wi‑Fi banc). Hello Wi‑Fi **codé et tiré** ; valider à l’oreille après restart GATT. Vidéo plus tard.
+4. Commandes hors Tests (dont parallèle marche) — **pas démarré**. L’UI Piloter envoie déjà le `ControllerFrame`.
 
 ## Classification
 
 ### CONSERVER
 
 - GPIO / polarité HAT vérifiée ; banc SSH.
-- Chaîne BLE native (accueil, Tests, halt, status).
+- Chaîne BLE native (accueil, Piloter, Tests, halt, Monitoring, status).
 - `v2_rl_walk_mujoco.py` comme référence d’effets du mode normal.
 - `pi-setup/install.sh` ; wrappers héritage.
 
 ### ADAPTER
 
-- Deploy Wi‑Fi BLE (D-023) sur le Pi.
 - `pi-setup` plus tard : absorber `enable_halt_sudo.sh`, `enable_wifi_sudo.sh`, `enable_ble_robot_boot.sh`.
-- Sons D-024 (événements + hello d’inactivité) : **todo**, pas maintenant.
-- Offsets STS interactifs jusqu’aux 14 axes.
+- D-024 reste : `ENERGY_PROBLEM`, hello idle `random_sounds/`, sons Wi‑Fi **en session**.
+- Offsets STS interactifs seulement si un axe dérive (zéro Feetech = offsets 0).
 
 ### REMPLACER
 

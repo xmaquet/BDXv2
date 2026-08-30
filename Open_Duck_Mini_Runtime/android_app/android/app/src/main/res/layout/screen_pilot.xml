@@ -75,110 +75,133 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:gravity="center"
+        android:gravity="bottom"
         android:orientation="horizontal">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:gravity="center"
             android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btn_ant_d"
-                style="@style/Bdx.Btn.Pad"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@drawable/btn_flat_gray"
-                android:text="Ant. D" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-            <Button
-                android:id="@+id/btn_rythme"
-                style="@style/Bdx.Btn.Pad"
+                <Button
+                    android:id="@+id/btn_ant_g"
+                    style="@style/Bdx.Btn.Pad"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_flat_gray"
+                    android:text="Ant. G" />
+
+                <Button
+                    android:id="@+id/btn_tempo_plus"
+                    style="@style/Bdx.Btn.Pad"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/btn_flat_gray"
+                    android:text="Tempo +" />
+
+                <Button
+                    android:id="@+id/btn_tempo_minus"
+                    style="@style/Bdx.Btn.Pad"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/btn_flat_gray"
+                    android:text="Tempo −" />
+
+                <Button
+                    android:id="@+id/btn_ant_d"
+                    style="@style/Bdx.Btn.Pad"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_flat_gray"
+                    android:text="Ant. D" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="@drawable/btn_flat_gray"
-                android:text="Rythme" />
+                android:layout_marginTop="8dp"
+                android:gravity="bottom"
+                android:orientation="horizontal">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Marche"
-                android:textColor="@color/bs_muted"
-                android:textSize="12sp" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-            <com.xmaquet.open_duck_mini_runtime.VirtualStickView
-                android:id="@+id/stick_left"
-                android:layout_width="140dp"
-                android:layout_height="140dp" />
-        </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Marche"
+                        android:textColor="@color/bs_muted"
+                        android:textSize="12sp" />
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp">
+                    <com.xmaquet.open_duck_mini_runtime.VirtualStickView
+                        android:id="@+id/stick_left"
+                        android:layout_width="140dp"
+                        android:layout_height="140dp" />
+                </LinearLayout>
 
-            <Button
-                android:id="@+id/btn_tempo_plus"
-                style="@style/Bdx.Btn.Pad"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/btn_flat_gray"
-                android:text="Tempo +" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp">
 
-            <Button
-                android:id="@+id/btn_tempo_minus"
-                style="@style/Bdx.Btn.Pad"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:background="@drawable/btn_flat_gray"
-                android:text="Tempo −" />
+                    <Button
+                        android:id="@+id/btn_rythme"
+                        style="@style/Bdx.Btn.Pad"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/btn_flat_gray"
+                        android:text="Rythme" />
 
-            <Button
-                android:id="@+id/btn_stop"
-                style="@style/Bdx.Btn.Pad"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:background="@drawable/btn_flat_red"
-                android:minWidth="96dp"
-                android:text="Stop" />
-        </LinearLayout>
+                    <Button
+                        android:id="@+id/btn_stop"
+                        style="@style/Bdx.Btn.Pad"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:background="@drawable/btn_flat_red"
+                        android:minWidth="96dp"
+                        android:text="Stop" />
+                </LinearLayout>
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center_horizontal"
+                    android:orientation="vertical">
 
-            <Button
-                android:id="@+id/btn_ant_g"
-                style="@style/Bdx.Btn.Pad"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/btn_flat_gray"
-                android:text="Ant. G" />
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Rotation"
+                        android:textColor="@color/bs_muted"
+                        android:textSize="12sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="Rotation"
-                android:textColor="@color/bs_muted"
-                android:textSize="12sp" />
-
-            <com.xmaquet.open_duck_mini_runtime.VirtualStickView
-                android:id="@+id/stick_right"
-                android:layout_width="140dp"
-                android:layout_height="140dp" />
+                    <com.xmaquet.open_duck_mini_runtime.VirtualStickView
+                        android:id="@+id/stick_right"
+                        android:layout_width="140dp"
+                        android:layout_height="140dp" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
 
         <RelativeLayout

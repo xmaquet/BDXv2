@@ -175,7 +175,7 @@ Les scripts existants sont un point de départ (**ADAPTER**, pas réécrire sans
 
 Une fois l’OS réinstallé, l’agent se connecte au Pi en **SSH** pour piloter installation, tests et actions.
 
-**Avancement (2026-08-25) :** OS posé ; SSH joignable (`bdxv2@192.168.10.131` constaté). La clause « pas de SSH avant l’OS » est **satisfaite**.
+**Avancement (2026-08-25) :** OS posé ; SSH joignable. IP **constatée 2026-08-30 : `192.168.10.132`** (auparavant `192.168.10.131`, DHCP). La clause « pas de SSH avant l’OS » est **satisfaite**.
 
 ---
 
@@ -201,7 +201,7 @@ Les **commandes** circulent en **Bluetooth Low Energy dans les deux sens** (tabl
 
 La **vidéo** (Picam déjà en place) est un objectif **ultérieur**, pas le critère du premier livrable BLE.
 
-**Avancement (2026-08-29) :** APK **native 1.3.15** (D-022). BLE TX/RX, Tests, halt (D-021), statut STS, hello boot **validés sur robot**. Wi‑Fi robot via BLE (D-023) **codé**, deploy Pi **en attente**. Vidéo toujours plus tard, hors GATT.
+**Avancement (2026-08-30) :** APK **native 1.3.23** (D-022). BLE TX/RX, Tests, halt, statut STS, Monitoring, Wi‑Fi banc **sur robot**. Hello init : `BLE_OKAY` puis `WIFI_OKAY` / `WIFI_PROBLEM` (`124aeb1`, pull Pi). Vidéo toujours plus tard, hors GATT.
 
 ---
 
@@ -243,7 +243,7 @@ Dans **cette** version BDXv2 :
 
 Le code héritage `xbox_controller.py` **n’est pas à supprimer** (référence / marche amont). Il n’est **pas** un prérequis d’install ni d’UI.
 
-Le protocole JSON interne peut rester aligné sur `ControllerFrame` v1 tant qu’une évolution n’est pas décidée ; l’UI ne doit **pas** se présenter comme une manette Xbox.
+Le protocole JSON interne reste aligné sur `ControllerFrame` v1 ; l’UI **Piloter** n’est **pas** une manette Xbox. Mapping libellés → champs : `Open_Duck_Mini_Runtime/docs/protocol.md` (APK 1.3.23 : Ant. G à gauche, Tempo au centre, Ant. D à droite ; sticks Marche / Rotation alignés).
 
 **Conséquence install :** extra pip **`[ble]`** et **`[hardware]`** ; **pas** `[control]` / appairage Xbox. pygame via **apt** (`python3-pygame`) pour **l’audio** (`sounds.py`), pas pour une manette.
 
@@ -310,8 +310,9 @@ L’application tablette est une **UI Android native**. La WebView Capacitor (pr
 **Accueil :** menus **distincts**, pas une manette unique :
 - **Piloter BDXv2** — commande / lien BLE (pas d’UI Xbox, D-018)
 - **Tests** — accessoires D-007, hors marche (D-018)
-- **Éteindre le robot** — D-021, hors Tests, confirmation obligatoire
 - **Vidéo** — plus tard, **hors BLE**
+- **Monitoring** — santé Pi + Wi‑Fi robot (D-023 ; anciennement « Paramètres »)
+- **Éteindre le robot** — D-021, hors Tests, confirmation obligatoire
 
 **Vidéo (deux temps, pas maintenant) :**
 1. **Basique** : afficher ce que voit le robot (caméra → tablette).
@@ -337,7 +338,9 @@ L’accueil comporte une zone **Monitoring** (carte, avant Éteindre ; anciennem
 
 **Protocole :** message dédié `{ "type": "wifi", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Mot de passe en TX uniquement, jamais en RX / logs.
 
-**Pi :** wrapper `bdx-wifi` + `scripts/enable_wifi_sudo.sh` (une fois, hors `pi-setup/install.sh`, D-020). Déploiement robot = `git pull` (ou scp) + sudoers quand le Pi est joignable.
+**Pi :** wrapper `bdx-wifi` + `scripts/enable_wifi_sudo.sh` (une fois, hors `pi-setup/install.sh`, D-020).
+
+**Avancement (2026-08-30) :** déployé sur le banc ; clone Pi @ `124aeb1`.
 
 L’écran Monitoring affiche aussi la **santé Pi** (CPU, RAM, température, disque, uptime) via `{ "type": "sys" }`, poll ~8 s seulement tant que l’écran est ouvert. Pas de charge extra ailleurs.
 
@@ -345,19 +348,15 @@ L’écran Monitoring affiche aussi la **santé Pi** (CPU, RAM, température, di
 
 ## D-024 — Sons événementiels ; hello aléatoire d’inactivité
 
-**Statut :** adoptée (2026-08-29, PO) — **à implémenter plus tard**, pas maintenant.
+**Statut :** adoptée (2026-08-29, PO) — **partielle**.
 
-Les WAV ajoutés (hors catalogue Tests héritage) ont un rôle produit :
+- **Init (fait, 2026-08-30)** — après `BLE_OKAY` : `WIFI_OKAY` si le profil défaut NM est associé (~20 s), sinon `WIFI_PROBLEM` (Monitoring / Wi‑Fi). WAV **suivis Git** et **sur le Pi**.
+- **Plus tard (ne pas coder maintenant)** :
+  - rejouer `WIFI_*` en **session** (join / perte de lien) ;
+  - `ENERGY_PROBLEM_mini_BDX.wav` — événement énergie / tension ;
+  - `random_sounds/` — hello **aléatoire** + mimiques + yeux après **inactivité durable** (seuil à définir ; chargeur récursif requis).
 
-- **Événements (à terme)** — racine `mini_bdx_runtime/assets/` :
-  - `WIFI_OKAY_mini_BDX.wav` — Wi‑Fi OK ;
-  - `WIFI_PROBLEM_mini_BDX.wav` — problème Wi‑Fi ;
-  - `ENERGY_PROBLEM_mini_BDX.wav` — problème d’énergie / tension.
-- **Hello aléatoire d’inactivité** — `mini_bdx_runtime/assets/random_sounds/` : tirage parmi ces clips, **accompagné de mimiques et des yeux**, pendant des **périodes d’inactivité durables**.
-
-Ce n’est **pas** le hello de boot (D-008). Ce n’est **pas** un son Tests à la demande.
-
-**Avancement (2026-08-30) :** `WIFI_OKAY` / `WIFI_PROBLEM` joués à l’**init** (après le son BLE), selon l’association du profil défaut. **Toujours plus tard :** `ENERGY_PROBLEM`, hello aléatoire `random_sounds/`, chargeur récursif, seuil d’inactivité.
+Ce n’est **pas** un son Tests à la demande. L’idle `random_sounds/` n’est **pas** le hello de boot (D-008).
 
 ---
 

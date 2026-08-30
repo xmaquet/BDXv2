@@ -74,6 +74,30 @@ Pour émuler le comportement manette physique, l’app Android applique la même
 3. Utiliser `lt/rt` pour les antennes (cf. scripts existants) :
    - `antennas.left = rt`, `antennas.right = lt`
 
+## UI Piloter (APK 1.3.23)
+
+Libellés tablette → `ControllerFrame`. Consommateur prévu : `v2_rl_walk_mujoco.py` via `get_last_command()`. La marche n’est **pas** lancée depuis l’app (lot 4).
+
+Disposition : une rangée **Ant. G** · **Tempo +** · **Tempo −** · **Ant. D** (G à gauche, D à droite) ; sticks **Marche** (gauche) et **Rotation** (droit) alignés en dessous.
+
+| Libellé | Xbox | Champ | Effet prévu (runtime marche) |
+|---------|------|--------|------------------------------|
+| Stick Marche | Stick gauche | `axes.lx` / `axes.ly` | Vitesse latérale / avant-arrière |
+| Stick Rotation | Stick droit X | `axes.rx` | Lacet |
+| Stick droit Y | Stick droit Y | `axes.ry` | Transmis, **non utilisé** |
+| Pause | A | `buttons.A` | Bascule pause |
+| Son | B | `buttons.B` | Son aléatoire |
+| Proj. | X | `buttons.X` | Projecteur |
+| Tête | Y | `buttons.Y` | Mode tête (sticks = tête) |
+| Rythme | LB | `buttons.LB` | Cadence ×1,3 tant que maintenu |
+| Tempo + / − | Croix | `dpad.up` / `dpad.down` | Offset de cadence |
+| Ant. G | RT | `triggers.rt` | Antenne gauche |
+| Ant. D | LT | `triggers.lt` | Antenne droite |
+| Stop | — | `safety.estop` | Trame **neutre** |
+| *(aucun)* | RB | `buttons.RB` | Toujours `false` ; **non utilisé** |
+
+Yeux, antennes wiggle/pulse, WAV à la demande : menu **Tests**, pas Piloter.
+
 ## GATT (BLE)
 
 Pour minimiser les changements, on conserve les UUIDs utilisés dans le prototype Figma :
@@ -126,7 +150,7 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 - **`--no-hello`** : ne pas jouer la séquence de démarrage.
 - **`--dbus-adapter PATH`** : chemin D-Bus explicite de l’adaptateur (ex. `/org/bluez/hci0`).
 
-Au lancement de `bdx-ble-robot` : dès la pub BLE, `BLE_OKAY_mini_BDX.wav`, puis attente (~20 s) de l’association Wi‑Fi défaut → `WIFI_OKAY_mini_BDX.wav` ou `WIFI_PROBLEM_mini_BDX.wav` (alors : Paramètres / Wi‑Fi dans l’app). Sauf `--no-hello` : après ~10 s, 3 clignements, 4 oscillations d’antennes, `happy1.wav`. Logs : `journalctl -u bdx-ble-robot` et `/tmp/bdx-boot-hello.log`.
+Au lancement de `bdx-ble-robot` : dès la pub BLE, `BLE_OKAY_mini_BDX.wav`, puis attente (~20 s) de l’association Wi‑Fi défaut → `WIFI_OKAY_mini_BDX.wav` ou `WIFI_PROBLEM_mini_BDX.wav` (alors : **Monitoring** / Wi‑Fi dans l’app). Sauf `--no-hello` : après ~10 s, 3 clignements, 4 oscillations d’antennes, `happy1.wav`. Logs : `journalctl -u bdx-ble-robot` et `/tmp/bdx-boot-hello.log`.
 
 Allumage du Pi : le GATT **n’était pas** autostarté. Une fois, hors `pi-setup/install.sh` :
 

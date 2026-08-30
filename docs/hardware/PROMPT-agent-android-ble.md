@@ -39,9 +39,9 @@ Tu possèdes ce volet de bout en bout : UI, plugin natif, contrat, serveur Pi. T
 - **D-011** : HAT 2N2222, GPIO d’origine (yeux D23/D24, projecteur D25, antennes PWM D12/D13). Polarité **active-high vérifiée** au banc SSH.
 - **D-020** : pas d’install complète Pi maintenant ; développer et tester sur le banc existant. Réinstall possible en fin de cycle.
 - **D-022** : UI produit **native** ; WebView / proto Figma abandonnés comme surface ; accueil à menus ; vidéo hors BLE, deux temps (affichage puis IA tablette).
-- **D-023** : carte **Monitoring** ; Wi‑Fi robot via BLE (`type: wifi`). Vidéo reste hors BLE. Deploy Pi = `enable_wifi_sudo.sh` + git pull, hors `pi-setup/install.sh`.
+- **D-023** : carte **Monitoring** ; Wi‑Fi robot via BLE (`type: wifi`) ; santé Pi `{type:sys}` (poll seulement si l’écran est ouvert). Vidéo reste hors BLE. Deploy Pi = `enable_wifi_sudo.sh` + git pull, hors `pi-setup/install.sh`. **Déjà sur le banc.**
 - Tablette = **central BLE** ; Pi = **périphérique GATT**. Pas de Web Bluetooth dans la WebView.
-- `ControllerFrame` v1 peut rester le fil interne des commandes analogiques / boutons héritage ; l’UI ne doit **pas** ressembler à une Xbox. Évolution de protocole = mise à jour de `protocol.md`, pas silencieuse.
+- `ControllerFrame` v1 = fil interne Piloter ; l’UI ne doit **pas** ressembler à une Xbox. Disposition 1.3.23 et mapping : `protocol.md`. Évolution de protocole = mise à jour de `protocol.md`, pas silencieuse.
 
 ## D-021 — Arrêt système (à ne pas oublier)
 
@@ -101,14 +101,14 @@ Critère phase A : tablette connectée en BLE ; chaque accessoire v1 actionnable
 - Réécrire la politique de marche ONNX
 - Caméra / micro comme fonctions v1 (sauf phase B vidéo, sur ordre PO)
 - Reboot comme action UI par défaut ; couple STS avant halt (sauf ordre PO)
-- **D-024** (sons événementiels, hello aléatoire d’inactivité) : **todo**, ne pas coder
+- **D-024** : init `WIFI_OKAY` / `WIFI_PROBLEM` **déjà faite** — ne pas recoder. Reste (énergie, idle, Wi‑Fi en session) : **ne pas coder** sans ordre PO
 - Git commit / push sauf demande explicite du PO
 - Élargir le contrat métier pour simplifier le code
 
 ## Démarrage
 
 1. Lis `docs/current-state.md` et résume l’écart **réel** (ne pas repartir de « pas d’APK / UI manette » : c’est **obsolète**).
-2. Propose le **prochain lot borné** à partir de l’état actuel (souvent : deploy + validation Wi‑Fi D-023, ou branchement des WAV si le PO l’a demandé). Attends l’accord avant de coder.
+2. Propose le **prochain lot borné** à partir de l’état actuel (hello Wi‑Fi à l’oreille après SIGKILL GATT, ou lot 4 consommer `ControllerFrame`). Attends l’accord avant de coder. Ne pas ouvrir D-024 énergie / idle sans ordre.
 3. Lots courts, vérifiables ; à la fin : fichiers touchés, version APK, comment relancer `bdx-ble-robot`.
 
 Si tu ne peux pas flasher la tablette depuis cette machine, dis-le et donne la procédure exacte au PO.
