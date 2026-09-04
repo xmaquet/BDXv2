@@ -81,3 +81,17 @@ class DuckConfig:
                 "right_ankle": 0.0,
             },
         )
+        # +1 = convention MuJoCo/RL ; -1 = horn ou câblage inversé (bus = offset + sign*software)
+        self.joints_sign = self.json_config.get("joints_sign", {})
+        # Repos sans couple : léger arrière tête pour compenser le poids (rad, software)
+        self.joints_gravity_rest = self.json_config.get("joints_gravity_rest", {})
+        # Limites testées sur le robot réel (rad, software, amplitude max viable)
+        self.joints_limits_viable = self.json_config.get("joints_limits_viable", {})
+
+    def rest_software(self, joint_name: str) -> float:
+        return float(self.joints_gravity_rest.get(joint_name, 0.0))
+
+    def viable_limit(self, joint_name: str) -> float | None:
+        if joint_name not in self.joints_limits_viable:
+            return None
+        return float(self.joints_limits_viable[joint_name])

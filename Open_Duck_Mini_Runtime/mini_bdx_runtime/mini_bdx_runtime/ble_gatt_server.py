@@ -32,6 +32,7 @@ def _try_apply_json_frames(
     halt: Any = None,
     wifi: Any = None,
     sysinfo: Any = None,
+    demo: Any = None,
 ) -> None:
     """Décode UTF-8, extrait un ou plusieurs objets JSON (raw_decode)."""
     if not buf:
@@ -53,21 +54,37 @@ def _try_apply_json_frames(
             return
         if isinstance(obj, dict):
             if obj.get("type") == "halt" and halt is not None:
+                if demo is not None:
+                    demo.stop()
                 ack = halt.request(obj)
                 print(f"[ble_gatt] halt → {ack.get('message')}", flush=True)
+            elif obj.get("type") == "demo" and demo is not None:
+                ack = demo.request(obj)
+                print(f"[ble_gatt] demo {ack.get('action')} → {ack.get('message', ack.get('type'))}", flush=True)
             elif obj.get("type") == "wifi" and wifi is not None:
                 ack = wifi.request(obj)
                 print(f"[ble_gatt] wifi {ack.get('action')} → {ack.get('message')}", flush=True)
             elif obj.get("type") == "sys" and sysinfo is not None:
                 sysinfo.request(obj)
             elif obj.get("type") == "test" and tests is not None:
-                action = str(obj.get("action", ""))
-                sound = obj.get("sound")
-                result = tests.dispatch(action, sound=None if sound is None else str(sound))
-                tests.last_result = result
-                print(f"[ble_gatt] test {action} → {result}", flush=True)
+                if demo is not None and demo.running:
+                    tests.last_state = {
+                        "type": "test_state",
+                        "v": 1,
+                        "action": str(obj.get("action", "")),
+                        "active": False,
+                        "message": "Démo en cours — Stop d’abord",
+                    }
+                    print("[ble_gatt] test ignoré (démo)", flush=True)
+                else:
+                    action = str(obj.get("action", ""))
+                    sound = obj.get("sound")
+                    result = tests.dispatch(action, sound=None if sound is None else str(sound))
+                    tests.last_result = result
+                    print(f"[ble_gatt] test {action} → {result}", flush=True)
             elif int(obj.get("v", 0)) == 1 and "axes" in obj:
-                virtual.apply_json(obj)
+                if demo is None or not demo.running:
+                    virtual.apply_json(obj)
         idx = end
         while idx < len(text) and text[idx].isspace():
             idx += 1
@@ -146,6 +163,7 @@ def main() -> None:
     from mini_bdx_runtime.ble_halt import SystemHalt
     from mini_bdx_runtime.ble_wifi import RobotWifi
     from mini_bdx_runtime.ble_sys import RobotSys
+    from mini_bdx_runtime.ble_demo import DemoMode
     from mini_bdx_runtime.sts_bus import StsBusMonitor
 
     shared_virtual = VirtualJoystickState()
@@ -154,6 +172,7 @@ def main() -> None:
     shared_wifi = RobotWifi()
     shared_sys = RobotSys()
     shared_sts = StsBusMonitor(interval_s=30.0)
+    shared_demo = DemoMode(sts=shared_sts)
 
     class RobotDuckGattService(Service):
         """Service unique : TX (write JSON), RX (notify + read)."""
@@ -166,6 +185,7 @@ def main() -> None:
             wifi: RobotWifi,
             sysinfo: RobotSys,
             sts: StsBusMonitor,
+            demo: DemoMode,
         ) -> None:
             self.virtual = v
             self.tests = tests
@@ -173,6 +193,7 @@ def main() -> None:
             self.wifi = wifi
             self.sysinfo = sysinfo
             self.sts = sts
+            self.demo = demo
             self._tx_buf = bytearray()
             self._rx_value = b'{"type":"log","level":"info","message":"idle"}'
             super().__init__(SERVICE_UUID, True)
@@ -199,7 +220,13 @@ def main() -> None:
                 self._tx_buf.clear()
                 return
             _try_apply_json_frames(
-                self._tx_buf, self.virtual, self.tests, self.halt, self.wifi, self.sysinfo
+                self._tx_buf,
+                self.virtual,
+                self.tests,
+                self.halt,
+                self.wifi,
+                self.sysinfo,
+                self.demo,
             )
 
         @characteristic(RX_UUID, CharFlags.NOTIFY | CharFlags.READ)
@@ -210,6 +237,13 @@ def main() -> None:
             wifi_msg = self.wifi.pop() if self.wifi is not None else None
             if wifi_msg:
                 payload = dict(wifi_msg)
+                payload.setdefault("ts_ms", int(time.time() * 1000))
+                self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+                return
+            demo_msg = getattr(self.demo, "last_state", None) if self.demo is not None else None
+            if demo_msg:
+                self.demo.last_state = None
+                payload = dict(demo_msg)
                 payload.setdefault("ts_ms", int(time.time() * 1000))
                 self._rx_value = json.dumps(payload, separators=(",", ":")).encode("utf-8")
                 return
@@ -293,7 +327,13 @@ def main() -> None:
             print(f"[ble_gatt] Impossible d’allumer l’adaptateur ({e}).", file=sys.stderr)
 
         srv = RobotDuckGattService(
-            shared_virtual, shared_tests, shared_halt, shared_wifi, shared_sys, shared_sts
+            shared_virtual,
+            shared_tests,
+            shared_halt,
+            shared_wifi,
+            shared_sys,
+            shared_sts,
+            shared_demo,
         )
         await srv.register(bus, adapter=adapter)
 
@@ -348,6 +388,8 @@ def main() -> None:
                 pending = (
                     (shared_wifi.pending() if shared_wifi is not None else False)
                     or getattr(shared_sys, "last_state", None)
+                    or getattr(shared_demo, "last_state", None)
+                    or getattr(shared_demo, "running", False)
                     or getattr(shared_tests, "last_state", None)
                     or getattr(shared_halt, "last_state", None)
                 )

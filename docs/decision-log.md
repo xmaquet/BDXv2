@@ -312,6 +312,7 @@ L’application tablette est une **UI Android native**. La WebView Capacitor (pr
 **Accueil :** menus **distincts**, pas une manette unique :
 - **Piloter BDXv2** — commande / lien BLE (pas d’UI Xbox, D-018)
 - **Tests** — accessoires D-007, hors marche (D-018)
+- **Mode démo** — tête + expressions, robot sur support (D-027)
 - **Vidéo** — plus tard, **hors BLE**
 - **Monitoring** — santé Pi + Wi‑Fi robot (D-023 ; anciennement « Paramètres »)
 - **Éteindre le robot** — D-021, hors Tests, confirmation obligatoire
@@ -387,6 +388,22 @@ Les **arbres d’origine** (`Open_Duck_Mini_Runtime/`, et le reste amont) **rest
 **Aujourd’hui (D-019) :** `pi-setup/` n’orchestre que l’install ; le paquet Python est encore `Open_Duck_Mini_Runtime/`.
 
 **Hors ce chantier tant qu’il n’est pas ouvert :** déplacer le code, changer le sparse checkout, réécrire `install.sh` pour un nouveau layout. L’app Android tablette n’est **pas** implicitement déplacée sous `pi-setup/` (ce n’est pas le runtime Pi).
+
+---
+
+## D-027 — Mode démo (tête + expressions, robot sur support)
+
+**Statut :** adoptée (2026-09-04, PO)
+
+Quand le BDX est **sur son support** (pas en marche), l’app lance un **mode démo** : chorégraphies **tête** (IDs 30–33) synchronisées avec **yeux / projecteur / antennes** et **WAV**. Ce n’est **pas** la marche, **pas** Piloter (`ControllerFrame`), **pas** un remplacement de Tests.
+
+**Contrat :** `{ "type": "demo", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Presets : `nod`, `look_around`, `curious`, **`idle` (attente, mix d’effets)**, **`idle_mix` (les 3 presets dans un ordre aléatoire)**. Pause entre salves : `period_s` (défaut 30, clamp 5–300), réglée dans Monitoring. L’app déclenche ; le Pi joue. Pas de stream d’angles.
+
+**Limites banc :** clamp via `DuckConfig` (`joints_gravity_rest`, `joints_limits_viable`). Roll asymétrique tant que les horns ne sont pas recalés. Stop → repos gravité (pitch ≈ +0,05 rad). Uniquement les servos tête sous couple (kp 12–16).
+
+**Exclusivité :** démo en cours → `ControllerFrame` ignoré ; Tests accessoires refusés. Poll STS en pause (même port série).
+
+**UI :** carte d’accueil **Mode démo**.
 
 ---
 

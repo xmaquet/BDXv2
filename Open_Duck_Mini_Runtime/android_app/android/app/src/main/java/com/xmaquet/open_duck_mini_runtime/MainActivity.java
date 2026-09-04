@@ -32,6 +32,12 @@ import java.util.Locale;
 
 public class MainActivity extends BridgeActivity {
   private static final int REQ_BLE = 42;
+  private static final String PREFS_NAME = "bdxv2";
+  private static final String PREF_DEMO_WAIT_S = "demo_wait_s";
+  private static final int DEMO_WAIT_DEFAULT_S = 30;
+  private static final int DEMO_WAIT_MIN_S = 5;
+  private static final int DEMO_WAIT_MAX_S = 300;
+  private static final int DEMO_WAIT_STEP_S = 5;
 
   private enum Screen {
     HOME,
@@ -40,7 +46,8 @@ public class MainActivity extends BridgeActivity {
     SETTINGS,
     WIFI,
     SHUTDOWN,
-    VIDEO
+    VIDEO,
+    DEMO
   }
 
   private ViewGroup root;
@@ -121,6 +128,8 @@ public class MainActivity extends BridgeActivity {
   private TextView sysDiskView;
   private TextView sysUpView;
   private TextView sysHintView;
+  private TextView demoHint;
+  private TextView demoWaitValueView;
   private int sysPollGen;
   private double lastSysLoad = Double.NaN;
   private int lastSysCpu = -1;
@@ -131,6 +140,12 @@ public class MainActivity extends BridgeActivity {
   private int lastSysDisk = -1;
   private int lastSysUp = -1;
   private String lastSysMessage = "";
+  private boolean lastDemoRunning;
+  private String lastDemoPreset = "";
+  private String lastDemoMessage = "";
+  private View homeDemoBanner;
+  private TextView homeDemoBannerDetail;
+  private TextView homeDemoCardHint;
 
   private VirtualStickView stickLeft;
   private VirtualStickView stickRight;
@@ -251,6 +266,9 @@ public class MainActivity extends BridgeActivity {
       case VIDEO:
         bindSimple(R.layout.screen_video);
         break;
+      case DEMO:
+        bindDemo();
+        break;
     }
   }
 
@@ -259,6 +277,7 @@ public class MainActivity extends BridgeActivity {
     screenContainer.addView(view);
     view.findViewById(R.id.home_pilot).setOnClickListener(v -> showScreen(Screen.PILOT));
     view.findViewById(R.id.home_tests).setOnClickListener(v -> showScreen(Screen.TESTS));
+    view.findViewById(R.id.home_demo).setOnClickListener(v -> showScreen(Screen.DEMO));
     view.findViewById(R.id.home_video).setOnClickListener(v -> showScreen(Screen.VIDEO));
     view.findViewById(R.id.home_settings).setOnClickListener(v -> showScreen(Screen.SETTINGS));
     view.findViewById(R.id.home_shutdown).setOnClickListener(v -> showScreen(Screen.SHUTDOWN));
@@ -266,8 +285,16 @@ public class MainActivity extends BridgeActivity {
     version.setText(BuildConfig.VERSION_NAME);
     homeSts = view.findViewById(R.id.home_sts);
     homeStsBadges = view.findViewById(R.id.home_sts_badges);
+    homeDemoBanner = view.findViewById(R.id.home_demo_banner);
+    homeDemoBannerDetail = view.findViewById(R.id.home_demo_banner_detail);
+    homeDemoCardHint = view.findViewById(R.id.home_demo_card_hint);
+    homeDemoBanner.setOnClickListener(v -> showScreen(Screen.DEMO));
     ensureStsBadges();
     paintHomeSts();
+    paintHomeDemo();
+    if (connected && ble != null && ble.isLinkReady()) {
+      sendDemo("status", null);
+    }
   }
 
   private void bindPilot() {
@@ -315,6 +342,128 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
+  private void bindDemo() {
+    View view = getLayoutInflater().inflate(R.layout.screen_demo, screenContainer, false);
+    screenContainer.addView(view);
+    view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
+    demoHint = view.findViewById(R.id.demo_hint);
+    view.findViewById(R.id.demo_nod).setOnClickListener(v -> startDemo("nod"));
+    view.findViewById(R.id.demo_look).setOnClickListener(v -> startDemo("look_around"));
+    view.findViewById(R.id.demo_curious).setOnClickListener(v -> startDemo("curious"));
+    view.findViewById(R.id.demo_idle).setOnClickListener(v -> startDemo("idle"));
+    view.findViewById(R.id.demo_idle_mix).setOnClickListener(v -> startDemo("idle_mix"));
+    view.findViewById(R.id.demo_stop).setOnClickListener(v -> sendDemo("stop", null));
+    if (lastDemoMessage == null || lastDemoMessage.isEmpty()) {
+      lastDemoMessage = demoReadyHint();
+    }
+    paintDemo();
+    sendDemo("list", null);
+    sendDemo("status", null);
+  }
+
+  private static String demoPresetLabel(String preset) {
+    if ("nod".equals(preset)) {
+      return "Hochement";
+    }
+    if ("look_around".equals(preset)) {
+      return "Regard autour";
+    }
+    if ("curious".equals(preset)) {
+      return "Curieux";
+    }
+    if ("idle".equals(preset)) {
+      return "Attente";
+    }
+    if ("idle_mix".equals(preset)) {
+      return "Attente mix";
+    }
+    return preset;
+  }
+
+  private String demoReadyHint() {
+    return "Prêt — pause " + demoWaitS() + " s entre salves (Monitoring).";
+  }
+
+  private int demoWaitS() {
+    int v = getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getInt(PREF_DEMO_WAIT_S, DEMO_WAIT_DEFAULT_S);
+    if (v < DEMO_WAIT_MIN_S) {
+      return DEMO_WAIT_MIN_S;
+    }
+    if (v > DEMO_WAIT_MAX_S) {
+      return DEMO_WAIT_MAX_S;
+    }
+    return v;
+  }
+
+  private void setDemoWaitS(int value) {
+    int v = value;
+    if (v < DEMO_WAIT_MIN_S) {
+      v = DEMO_WAIT_MIN_S;
+    }
+    if (v > DEMO_WAIT_MAX_S) {
+      v = DEMO_WAIT_MAX_S;
+    }
+    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putInt(PREF_DEMO_WAIT_S, v).apply();
+    paintDemoWait();
+  }
+
+  private void paintDemoWait() {
+    if (demoWaitValueView != null) {
+      demoWaitValueView.setText(demoWaitS() + " s");
+    }
+  }
+
+  private void startDemo(String preset) {
+    if (lastDemoRunning) {
+      new AlertDialog.Builder(this)
+          .setTitle("Démo en cours")
+          .setMessage("Arrêter la séquence actuelle et lancer « " + demoPresetLabel(preset) + " » ?")
+          .setNegativeButton("Annuler", null)
+          .setPositiveButton(
+              "Remplacer",
+              (d, w) -> {
+                sendDemo("stop", null);
+                txHandler.postDelayed(() -> sendDemo("start", preset), 1200);
+              })
+          .show();
+      return;
+    }
+    sendDemo("start", preset);
+  }
+
+  private void sendDemo(String action, String preset) {
+    if (ble == null || !connected || !ble.isLinkReady()) {
+      lastDemoMessage = "BLE non prêt — connecte d’abord (bandeau du haut).";
+      paintDemo();
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject();
+      o.put("type", "demo");
+      o.put("v", 1);
+      o.put("action", action);
+      if (preset != null) {
+        o.put("preset", preset);
+        if ("start".equals(action) && ("idle".equals(preset) || "idle_mix".equals(preset))) {
+          o.put("period_s", demoWaitS());
+        }
+      }
+      ble.sendNative(o.toString());
+    } catch (Exception e) {
+      lastDemoMessage = "Envoi impossible";
+      paintDemo();
+    }
+  }
+
+  private void paintDemo() {
+    if (demoHint == null) {
+      return;
+    }
+    if (lastDemoMessage != null && !lastDemoMessage.isEmpty()) {
+      demoHint.setText(lastDemoMessage);
+    }
+  }
+
   private void bindSettings() {
     View view = getLayoutInflater().inflate(R.layout.screen_settings, screenContainer, false);
     screenContainer.addView(view);
@@ -326,6 +475,12 @@ public class MainActivity extends BridgeActivity {
     sysDiskView = view.findViewById(R.id.sys_disk);
     sysUpView = view.findViewById(R.id.sys_up);
     sysHintView = view.findViewById(R.id.sys_hint);
+    demoWaitValueView = view.findViewById(R.id.demo_wait_value);
+    view.findViewById(R.id.demo_wait_minus)
+        .setOnClickListener(v -> setDemoWaitS(demoWaitS() - DEMO_WAIT_STEP_S));
+    view.findViewById(R.id.demo_wait_plus)
+        .setOnClickListener(v -> setDemoWaitS(demoWaitS() + DEMO_WAIT_STEP_S));
+    paintDemoWait();
     paintSys();
     startSysPoll();
   }
@@ -923,6 +1078,50 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
+  private void applyDemoRx(String text) {
+    if (text == null || text.isEmpty()) {
+      return;
+    }
+    try {
+      JSONObject o = new JSONObject(text);
+      String type = o.optString("type");
+      if ("demo_ack".equals(type)) {
+        lastDemoMessage = o.optString("message");
+        if (o.optBoolean("accepted") && "start".equals(o.optString("action"))) {
+          lastDemoRunning = true;
+          lastDemoPreset = o.optString("preset");
+        }
+        if ("stop".equals(o.optString("action"))) {
+          lastDemoRunning = false;
+        }
+        paintDemo();
+        paintHomeDemo();
+        return;
+      }
+      if ("demo_state".equals(type)) {
+        lastDemoRunning = o.optBoolean("running");
+        String phase = o.optString("phase");
+        String preset = o.optString("preset");
+        lastDemoPreset = preset;
+        if (lastDemoRunning) {
+          String phaseLabel = phase;
+          if ("wait".equals(phase)) {
+            phaseLabel = "pause";
+          } else if ("play".equals(phase)) {
+            phaseLabel = "salve";
+          }
+          lastDemoMessage =
+              "En cours : " + demoPresetLabel(preset) + (phaseLabel.isEmpty() ? "" : " · " + phaseLabel);
+        } else if (lastDemoMessage.isEmpty() || lastDemoMessage.startsWith("En cours") || lastDemoMessage.startsWith("Prêt")) {
+          lastDemoMessage = demoReadyHint();
+        }
+        paintDemo();
+        paintHomeDemo();
+      }
+    } catch (Exception ignored) {
+    }
+  }
+
   private void markTestSent(String action, String sound) {
     if ("eyes_steady".equals(action)) {
       eyesSteadyOn = !eyesSteadyOn;
@@ -1071,6 +1270,9 @@ public class MainActivity extends BridgeActivity {
     rxLine = null;
     homeSts = null;
     homeStsBadges = null;
+    homeDemoBanner = null;
+    homeDemoBannerDetail = null;
+    homeDemoCardHint = null;
     testsHint = null;
     shutdownResult = null;
     shutdownSend = null;
@@ -1094,6 +1296,8 @@ public class MainActivity extends BridgeActivity {
     sysDiskView = null;
     sysUpView = null;
     sysHintView = null;
+    demoHint = null;
+    demoWaitValueView = null;
     sysPollGen++;
     stickLeft = null;
     stickRight = null;
@@ -1188,12 +1392,15 @@ public class MainActivity extends BridgeActivity {
     lastBusV = Double.NaN;
     wifiScanning = false;
     lastWifiMessage = "BLE déconnecté.";
+    lastDemoRunning = false;
+    lastDemoPreset = "";
     if (ble != null) {
       ble.disconnectNative();
     }
     refreshBleBanner();
     refreshPilotStatus();
     paintHomeSts();
+    paintHomeDemo();
     paintWifi();
   }
 
@@ -1213,6 +1420,12 @@ public class MainActivity extends BridgeActivity {
             if (current == Screen.SETTINGS) {
               sendSys();
             }
+            if (current == Screen.DEMO || current == Screen.HOME) {
+              sendDemo("status", null);
+              if (current == Screen.DEMO) {
+                sendDemo("list", null);
+              }
+            }
           } else {
             connecting = false;
             lastStsBus = null;
@@ -1222,12 +1435,17 @@ public class MainActivity extends BridgeActivity {
             wifiScanning = false;
             lastWifiMessage = "BLE déconnecté.";
             lastSysMessage = "BLE déconnecté.";
+            lastDemoRunning = false;
+            lastDemoPreset = "";
+            lastDemoMessage = "BLE déconnecté.";
           }
           refreshBleBanner();
           refreshPilotStatus();
           paintHomeSts();
+          paintHomeDemo();
           paintWifi();
           paintSys();
+          paintDemo();
         });
   }
 
@@ -1241,6 +1459,7 @@ public class MainActivity extends BridgeActivity {
           applyTestRx(text);
           applyWifiRx(text);
           applySysRx(text);
+          applyDemoRx(text);
         });
   }
 
@@ -1327,6 +1546,30 @@ public class MainActivity extends BridgeActivity {
       homeSts.setTextColor(ContextCompat.getColor(this, R.color.bs_red));
     }
     paintStsBadges();
+  }
+
+  private void paintHomeDemo() {
+    if (homeDemoBanner == null) {
+      return;
+    }
+    if (lastDemoRunning) {
+      String label = demoPresetLabel(lastDemoPreset);
+      if (label == null || label.isEmpty()) {
+        label = "séquence en cours";
+      }
+      homeDemoBanner.setVisibility(View.VISIBLE);
+      if (homeDemoBannerDetail != null) {
+        homeDemoBannerDetail.setText(label + " — touche pour ouvrir / arrêter");
+      }
+      if (homeDemoCardHint != null) {
+        homeDemoCardHint.setText("EN COURS — " + label);
+      }
+    } else {
+      homeDemoBanner.setVisibility(View.GONE);
+      if (homeDemoCardHint != null) {
+        homeDemoCardHint.setText("Tête, expressions et sons — robot sur support");
+      }
+    }
   }
 
   private void ensureStsBadges() {

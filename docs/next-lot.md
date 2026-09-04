@@ -34,7 +34,7 @@ Hors périmètre : oreilles / antennes (PWM).
 
 ## Lot 3 — App Android BLE native
 
-**Statut :** **tenu** : 3a, Tests, halt, hello, accueil STS, Monitoring, Wi‑Fi banc (D-023). Hello Wi‑Fi init **codé**, **commité**, **pull Pi** (`124aeb1`). APK **1.3.23** (Piloter : Ant. G / Tempo / Ant. D, sticks alignés). Prompt : `docs/hardware/PROMPT-agent-android-ble.md`.
+**Statut :** **tenu** : 3a, Tests, halt, hello, accueil STS, Monitoring, Wi‑Fi banc (D-023), **Mode démo (D-027)** APK **1.3.27**. Prompt démo : `docs/hardware/PROMPT-agent-demo-mode.md`.
 
 **Reste lot 3 :** relancer `bdx-ble-robot` (SIGKILL) pour **entendre** BLE puis Wi‑Fi OK/échec. Valider à l’oreille sur robot.
 
@@ -81,4 +81,4 @@ L’écran **Piloter** envoie déjà `ControllerFrame` v1 (`protocol.md`). La co
 
 ---
 
-**Prochaine étape recommandée :** sur le Pi, SIGKILL + start de `bdx-ble-robot` pour jouer le nouveau hello. **Pas** le lot 2. **Pas** le reste D-024. **Pas** D-025. **Pas** D-026.
+**Prochaine étape recommandée :** APK **1.3.27** (Run Android Studio) ; valider le bandeau accueil pendant une démo. **Pas** le lot 2. **Pas** D-025 / D-026 / reste D-024.

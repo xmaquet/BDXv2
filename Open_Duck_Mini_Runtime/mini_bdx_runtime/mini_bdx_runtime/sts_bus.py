@@ -144,6 +144,7 @@ class StsBusMonitor:
         self._logged_reason = ""
         self._down_code = "no_lib"
         self._ready = threading.Event()
+        self._paused = threading.Event()
 
     def snapshot(self) -> dict[str, Any]:
         with self._lock:
@@ -152,6 +153,14 @@ class StsBusMonitor:
     def start(self) -> None:
         self._ready.set()
         threading.Thread(target=self._loop, name="sts_bus", daemon=True).start()
+
+    def pause(self) -> None:
+        """Libère le port série (démo tête / rustypot)."""
+        self._paused.set()
+        self._drop_io()
+
+    def resume(self) -> None:
+        self._paused.clear()
 
     def _empty_sts(self) -> list[dict[str, Any]]:
         return [{"id": sid, "ok": False} for sid in STS_IDS]
@@ -185,6 +194,10 @@ class StsBusMonitor:
     def _loop(self) -> None:
         self._ready.wait()
         while not self._stop.is_set():
+            if self._paused.is_set():
+                if self._stop.wait(0.25):
+                    break
+                continue
             try:
                 ok, volts, sts = self._read()
             except Exception as e:

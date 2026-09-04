@@ -67,6 +67,36 @@
             android:orientation="horizontal" />
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/home_demo_banner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/btn_flat_yellow"
+        android:clickable="true"
+        android:focusable="true"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/home_demo_banner_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="MODE DÉMO EN COURS"
+            android:textColor="#212529"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/home_demo_banner_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#212529"
+            android:textSize="16sp" />
+    </LinearLayout>
+
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -168,6 +198,53 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/home_demo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/btn_flat_yellow"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/icon_menu_tests"
+                    android:tint="#212529" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Mode démo"
+                        android:textColor="#212529"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/home_demo_card_hint"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Tête, expressions et sons — robot sur support"
+                        android:textColor="#212529"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/home_video"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -252,7 +329,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Santé du Pi et Wi‑Fi du robot"
+                        android:text="Santé du Pi, Wi‑Fi, pause démo"
                         android:textColor="#DEE2E6"
                         android:textSize="14sp" />
                 </LinearLayout>

@@ -1,3 +1,4 @@
+import math
 import time
 
 import numpy as np
@@ -69,6 +70,7 @@ class HWI:
         }
 
         self.joints_offsets = self.duck_config.joints_offset
+        self.joints_sign = self.duck_config.joints_sign
 
         self.kps = np.ones(len(self.joints)) * 32  # default kp
         self.kds = np.ones(len(self.joints)) * 0  # default kd
@@ -103,13 +105,41 @@ class HWI:
     def turn_off(self):
         self.io.disable_torque(list(self.joints.values()))
 
+    def _joint_sign(self, joint_name: str) -> float:
+        return float(self.joints_sign.get(joint_name, 1.0))
+
+    def bus_from_software(self, joint_name: str, software: float) -> float:
+        return self._joint_sign(joint_name) * software + self.joints_offsets[joint_name]
+
+    @staticmethod
+    def _wrap_pi(angle: float) -> float:
+        return (angle + math.pi) % (2 * math.pi) - math.pi
+
+    @staticmethod
+    def _closest_bus_goal(current_bus: float, target_bus: float) -> float:
+        goal = target_bus
+        while goal - current_bus > math.pi:
+            goal -= 2 * math.pi
+        while goal - current_bus < -math.pi:
+            goal += 2 * math.pi
+        return goal
+
+    def software_from_bus(self, joint_name: str, bus: float) -> float:
+        delta = self._wrap_pi(bus - self.joints_offsets[joint_name])
+        return self._joint_sign(joint_name) * delta
+
     def set_position(self, joint_name, pos):
         """
         pos is in radians
         """
         id = self.joints[joint_name]
-        pos = pos + self.joints_offsets[joint_name]
-        self.io.write_goal_position([id], [pos])
+        target = self.bus_from_software(joint_name, pos)
+        try:
+            current = float(self.io.read_present_position([id])[0])
+            target = self._closest_bus_goal(current, target)
+        except Exception:
+            pass
+        self.io.write_goal_position([id], [target])
 
     def set_position_all(self, joints_positions):
         """
@@ -117,7 +147,7 @@ class HWI:
         Warning: expects radians
         """
         ids_positions = {
-            self.joints[joint]: position + self.joints_offsets[joint]
+            self.joints[joint]: self.bus_from_software(joint, position)
             for joint, position in joints_positions.items()
         }
 
@@ -139,7 +169,7 @@ class HWI:
             return None
 
         present_positions = [
-            pos - self.joints_offsets[joint]
+            self.software_from_bus(joint, pos)
             for joint, pos in zip(self.joints.keys(), present_positions)
             if joint not in ignore
         ]

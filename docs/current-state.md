@@ -1,6 +1,6 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-08-30 (APK 1.3.23 Piloter, hello Wi‑Fi `124aeb1`).
+Dernière mise à jour : 2026-09-04 (mode démo D-027, bandeau accueil, APK 1.3.27).
 
 ## Situation du projet
 
@@ -20,7 +20,7 @@ Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/instal
 | Banc SSH accessoires (D-016) | **Clos** — yeux, projecteur, HP, antennes validés (polarité **active-high**) |
 | IDs STS3215 (D-014) | 14 IDs **déclarés programmés** |
 | Lecture bus STS | **Validée PO** (2026-08-28) : accueil **STS OK · 7,7 V** (14/14, pyserial `/dev/ttyACM0`) |
-| Lot 3 app BLE native (D-022) | APK **1.3.23** : accueil, Piloter, Tests, halt, Monitoring |
+| Lot 3 app BLE native (D-022) | APK **1.3.27** : accueil (bandeau démo active), Piloter, Tests, **Mode démo**, halt, Monitoring |
 | Halt UI (D-021) | Contrat + envoi + `poweroff` Pi **validés sur robot** |
 | Hello boot (D-008) | In-process : yeux / antennes / `happy1` ; `BLE_OKAY` ; puis **Wi‑Fi init** `WIFI_OKAY` / `WIFI_PROBLEM` |
 | Autostart GATT | `enable_ble_robot_boot.sh` (une fois). SIGTERM souvent ignoré → SIGKILL pour relancer |
@@ -30,11 +30,13 @@ Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/instal
 
 Surface produit = **UI Android native** (accueil à cartes). WebView / proto Figma **abandonnés**. `android_ui/` gelé.
 
-Accueil : Piloter · Tests · Vidéo (placeholder) · Monitoring · Éteindre.
+Accueil : Piloter · Tests · **Mode démo** · Vidéo (placeholder) · Monitoring · Éteindre.
 
 **FAIT banc / robot :** scan/connexion GATT ; TX `ControllerFrame` ; RX notify ; Tests accessoires ; halt ; badges STS + tension ; hello boot + sons BLE/Wi‑Fi d’init **dans le dépôt et sur le clone Pi**.
 
-**Piloter (APK 1.3.23) :** contrat `ControllerFrame` v1 (héritage Xbox, D-018). Rangée haute : **Ant. G** · Tempo +/− · **Ant. D** (G à gauche, D à droite). Sticks **Marche** et **Rotation** alignés. Pause=A, Son=B, Proj.=X, Tête=Y, Rythme=LB, Tempo=croix, Ant. G=`rt`, Ant. D=`lt`, Stop=`estop`. RB non utilisé. Mapping détaillé : `Open_Duck_Mini_Runtime/docs/protocol.md`. La marche n’est **pas** lancée depuis l’app (lot 4).
+**Mode démo (D-027) :** presets `nod` / `look_around` / `curious` / **`idle` (Attente, mix d’effets)** / **`idle_mix` (les 3 presets en ordre aléatoire)**. Pause **entre** salves : `period_s` réglable dans **Monitoring** (5–300 s, défaut 30). Accueil : bandeau jaune **MODE DÉMO EN COURS** tant qu’une séquence tourne. Tête 30–33. Robot **sur support**. `{ "type": "demo" }`. APK **1.3.27**.
+
+**Piloter (APK 1.3.23) :** contrat `ControllerFrame` v1 (héritage Xbox, D-018). Rangée haute : **Ant. G** · Tempo +/− · **Ant. D** (G à gauche, D à droite). Sticks **Marche** et **Rotation** alignés. Pause=A, Son=B, Proj.=X, Tête=Y, Rythme=LB, Tempo=croix, Ant. G=`rt`, Ant. D=`lt`, Stop=`estop`. RB non utilisé. Mapping détaillé : `Open_Duck_Mini_Runtime/docs/protocol.md`. Pendant une démo, les trames Piloter sont **ignorées**. La marche n’est **pas** lancée depuis l’app (lot 4).
 
 **Monitoring — santé Pi :** CPU %, charge 1 min, RAM, température SoC, disque `/`, uptime. Poll `{ "type": "sys" }` ~8 s si l’écran est ouvert.
 

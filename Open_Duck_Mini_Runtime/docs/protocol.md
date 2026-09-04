@@ -246,6 +246,51 @@ Réponses RX :
 
 Le robot peut aussi renvoyer un `type: log` (`message` = résultat).
 
+### Mode démo (tête + expressions, hors marche)
+
+Message **dédié**, **pas** un `ControllerFrame`, **pas** `type: test`. Robot **sur support**. L’app **déclenche** un preset ; le Pi **joue** la chorégraphie (pas de stream d’angles).
+
+```json
+{ "type": "demo", "v": 1, "action": "start", "preset": "nod" }
+{ "type": "demo", "v": 1, "action": "start", "preset": "idle", "period_s": 30 }
+{ "type": "demo", "v": 1, "action": "stop" }
+{ "type": "demo", "v": 1, "action": "status" }
+{ "type": "demo", "v": 1, "action": "list" }
+```
+
+`action` :
+
+| Valeur | Effet |
+|--------|--------|
+| `start` | Lance `preset` (`nod`, `look_around`, `curious`, `idle`, `idle_mix`). Pour `idle` / `idle_mix`, `period_s` optionnel (pause **entre** salves, défaut 30, clamp 5–300). Refus si une démo tourne déjà. |
+| `stop` | Arrêt, tête au **repos gravité**, couple tête relâché, accessoires OFF. |
+| `status` | État courant (`demo_state`). |
+| `list` | Catalogue des presets (`demo_catalog`). |
+
+Presets v1 :
+
+| `preset` | Tête | Expression | Son |
+|----------|------|------------|-----|
+| `nod` | Hochement pitch autour du repos (+0,05 rad) | Clignotement yeux | `happy1.wav` |
+| `look_around` | Yaw ±30° (±0,52 rad) | Clignotement yeux | `beep1.wav` |
+| `curious` | Léger yaw + pitch au-dessus du repos ; cou ≤ ±0,15 rad | Projecteur un flash | `lamp.wav` |
+| `idle` | **Attente** : boucle jusqu’à Stop. Première salve tout de suite, puis pause `period_s` **entre** salves. Chaque salve **mélange** une chorégraphie tête (tirage `nod` / `look_around` / `curious`) avec son / yeux / projecteur tirés à part. | mix | mix |
+| `idle_mix` | **Attente mix** : boucle jusqu’à Stop. Enchaîne les trois presets **complets** (`nod`, `look_around`, `curious`) dans un **ordre tiré au hasard** (sans répéter le même à cheval sur deux mélanges), avec la même pause `period_s` entre salves. | presets d’origine | presets d’origine |
+
+Consignes tête **clampées** (`DuckConfig` : `joints_gravity_rest`, `joints_limits_viable`). `head_roll` v1 : **[-0,35 ; +0,07] rad**. Jambes **non** commandées. `HWI.turn_on()` **interdit** (ça couple les 14 axes).
+
+Pendant une démo : `ControllerFrame` **ignoré**. Tests accessoires **refusés**. Halt arrête d’abord la démo. Watchdog **30 s** par preset one-shot ; `idle` / `idle_mix` n’ont pas de limite de durée (Stop ou halt). Poll STS **en pause** (un seul client sur `/dev/ttyACM0`).
+
+Réponses RX :
+
+```json
+{ "type": "demo_ack", "v": 1, "accepted": true, "action": "start", "preset": "nod", "message": "Démo : nod" }
+{ "type": "demo_state", "v": 1, "running": true, "preset": "nod", "phase": "play" }
+{ "type": "demo_catalog", "v": 1, "presets": [{"id": "nod", "label": "Hochement"}] }
+```
+
+`accepted: false` : déjà en cours, preset inconnu, bus occupé, etc.
+
 ### Santé Pi (Monitoring)
 
 Télémétrie **à la demande**, uniquement quand l’écran Monitoring est ouvert (poll ~8 s). Lectures `/proc` / `statvfs` / thermal sysfs — **pas** de `vcgencmd`, pas de processus listés.
