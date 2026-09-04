@@ -397,7 +397,7 @@ Les **arbres d’origine** (`Open_Duck_Mini_Runtime/`, et le reste amont) **rest
 
 Quand le BDX est **sur son support** (pas en marche), l’app lance un **mode démo** : chorégraphies **tête** (IDs 30–33) synchronisées avec **yeux / projecteur / antennes** et **WAV**. Ce n’est **pas** la marche, **pas** Piloter (`ControllerFrame`), **pas** un remplacement de Tests.
 
-**Contrat :** `{ "type": "demo", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Presets : `nod`, `look_around`, `curious`, **`idle` (attente, mix d’effets)**, **`idle_mix` (les 3 presets dans un ordre aléatoire)**. Pause entre salves : `period_s` (défaut 30, clamp 5–300), réglée dans Monitoring. L’app déclenche ; le Pi joue. Pas de stream d’angles.
+**Contrat :** `{ "type": "demo", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Presets : `nod`, `look_around`, `curious`, **`idle` (attente, mix d’effets)**, **`idle_mix` (les 3 presets dans un ordre aléatoire)**. Pause entre salves : `period_s` (défaut 30, clamp 5–300), réglée dans Monitoring. **Attente / Attente mix : oscillation d’antennes à chaque salve.** L’app déclenche ; le Pi joue. Pas de stream d’angles.
 
 **Limites banc :** clamp via `DuckConfig` (`joints_gravity_rest`, `joints_limits_viable`). Roll asymétrique tant que les horns ne sont pas recalés. Stop → repos gravité (pitch ≈ +0,05 rad). Uniquement les servos tête sous couple (kp 12–16).
 

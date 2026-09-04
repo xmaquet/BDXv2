@@ -134,6 +134,7 @@ def build_mixed_timeline(cfg: Any) -> list[dict[str, Any]]:
     if random.random() < 0.4:
         out[0]["projector"] = True
         out[max(1, len(out) // 2)]["projector"] = False
+    out[0]["antennas"] = "wiggle"
     return out
 
 
@@ -153,6 +154,7 @@ class DemoMode:
         self._sounds: Any = None
         self._cfg: Any = None
         self._period_s = PERIOD_DEFAULT_S
+        self._antennas_busy = False
 
     @property
     def running(self) -> bool:
@@ -270,6 +272,7 @@ class DemoMode:
                 name = deck.pop(0)
                 last = name
                 timeline = build_timeline(self._cfg, name)
+                timeline[0]["antennas"] = "wiggle"
             else:
                 timeline = build_mixed_timeline(self._cfg)
             self._emit_state("play")
@@ -365,6 +368,8 @@ class DemoMode:
                     proj.switch()
             except Exception as e:
                 print(f"[ble_demo] projecteur {e}", flush=True)
+        if ev.get("antennas") == "wiggle":
+            self._wiggle_antennas()
 
     def _ensure_eyes(self):
         if self._eyes is None:
@@ -386,6 +391,27 @@ class DemoMode:
 
             self._sounds = Sounds(volume=1.0, sound_directory=default_assets_directory())
         return self._sounds
+
+    def _wiggle_antennas(self) -> None:
+        if self._antennas_busy or self._stop.is_set():
+            return
+        self._antennas_busy = True
+
+        def run() -> None:
+            try:
+                from mini_bdx_runtime.antennas import Antennas
+
+                ant = Antennas()
+                try:
+                    ant.oscillate(duration=2.0, frequency=1.0)
+                finally:
+                    ant.stop()
+            except Exception as e:
+                print(f"[ble_demo] antennes {e}", flush=True)
+            finally:
+                self._antennas_busy = False
+
+        threading.Thread(target=run, name="demo_antennas", daemon=True).start()
 
     def _fx_off(self) -> None:
         try:
@@ -454,7 +480,7 @@ def _self_test() -> None:
                 assert abs(h[k] - reclamped[k]) < 1e-9
     for _ in range(8):
         mix = build_mixed_timeline(cfg)
-        assert mix
+        assert mix and mix[0].get("antennas") == "wiggle"
         for ev in mix:
             h = ev["head"]
             reclamped = clamp_head(cfg, h["head_yaw"], h["head_pitch"], h["head_roll"], h["neck_pitch"])

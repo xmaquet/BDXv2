@@ -21,7 +21,7 @@ Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/instal
 | IDs STS3215 (D-014) | 14 IDs **déclarés programmés** |
 | Lecture bus STS | **Validée PO** (2026-08-28) : accueil **STS OK · 7,7 V** (14/14, pyserial `/dev/ttyACM0`) |
 | Lot 3 app BLE native (D-022) | APK **1.3.27** : accueil (bandeau démo active), Piloter, Tests, **Mode démo**, halt, Monitoring |
-| Halt UI (D-021) | Contrat + envoi + `poweroff` Pi **validés sur robot** |
+| Halt UI (D-021) | Contrat + envoi OK ; sudoers `bdx-poweroff` + wrapper **LF** (2026-09-04). `/sbin/poweroff` = lien `systemctl` |
 | Hello boot (D-008) | In-process : yeux / antennes / `happy1` ; `BLE_OKAY` ; puis **Wi‑Fi init** `WIFI_OKAY` / `WIFI_PROBLEM` |
 | Autostart GATT | `enable_ble_robot_boot.sh` (une fois). SIGTERM souvent ignoré → SIGKILL pour relancer |
 | Wi‑Fi BLE (D-023) | **Déployé** sur le banc (scan / join / défaut). WAV init **sur le Pi** |
@@ -34,7 +34,7 @@ Accueil : Piloter · Tests · **Mode démo** · Vidéo (placeholder) · Monitori
 
 **FAIT banc / robot :** scan/connexion GATT ; TX `ControllerFrame` ; RX notify ; Tests accessoires ; halt ; badges STS + tension ; hello boot + sons BLE/Wi‑Fi d’init **dans le dépôt et sur le clone Pi**.
 
-**Mode démo (D-027) :** presets `nod` / `look_around` / `curious` / **`idle` (Attente, mix d’effets)** / **`idle_mix` (les 3 presets en ordre aléatoire)**. Pause **entre** salves : `period_s` réglable dans **Monitoring** (5–300 s, défaut 30). Accueil : bandeau jaune **MODE DÉMO EN COURS** tant qu’une séquence tourne. Tête 30–33. Robot **sur support**. `{ "type": "demo" }`. APK **1.3.27**.
+**Mode démo (D-027) :** presets `nod` / `look_around` / `curious` / **`idle` (Attente, mix d’effets)** / **`idle_mix` (les 3 presets en ordre aléatoire)**. Pause **entre** salves : `period_s` réglable dans **Monitoring** (5–300 s, défaut 30). **Attente / Attente mix : antennes à chaque salve.** Accueil : bandeau jaune **MODE DÉMO EN COURS** tant qu’une séquence tourne. Tête 30–33. Robot **sur support**. `{ "type": "demo" }`. APK **1.3.27**.
 
 **Piloter (APK 1.3.23) :** contrat `ControllerFrame` v1 (héritage Xbox, D-018). Rangée haute : **Ant. G** · Tempo +/− · **Ant. D** (G à gauche, D à droite). Sticks **Marche** et **Rotation** alignés. Pause=A, Son=B, Proj.=X, Tête=Y, Rythme=LB, Tempo=croix, Ant. G=`rt`, Ant. D=`lt`, Stop=`estop`. RB non utilisé. Mapping détaillé : `Open_Duck_Mini_Runtime/docs/protocol.md`. Pendant une démo, les trames Piloter sont **ignorées**. La marche n’est **pas** lancée depuis l’app (lot 4).
 

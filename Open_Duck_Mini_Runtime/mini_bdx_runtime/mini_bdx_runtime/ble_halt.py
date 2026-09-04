@@ -9,9 +9,9 @@ import time
 from typing import Any
 
 
-_POWEROFF_PATHS = ("/sbin/poweroff", "/usr/sbin/poweroff")
+_WRAPPER = "/usr/local/bin/bdx-poweroff"
 _SUDOERS_HINT = (
-    "sudo poweroff refusé. Sur le Pi : "
+    "sudo poweroff refusé. Sur le Pi, une fois : "
     "bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_halt_sudo.sh"
 )
 
@@ -49,20 +49,18 @@ class SystemHalt:
         return state
 
     def _poweroff_cmd(self) -> list[str] | None:
-        for path in _POWEROFF_PATHS:
-            if not os.path.isfile(path):
-                continue
+        if os.path.isfile(_WRAPPER):
             try:
                 probe = subprocess.run(
-                    ["sudo", "-n", "-l", "--", path],
+                    ["sudo", "-n", _WRAPPER, "--check"],
                     capture_output=True,
                     text=True,
                     timeout=5,
                 )
             except Exception:
-                continue
-            if probe.returncode == 0:
-                return ["sudo", "-n", path]
+                probe = None
+            if probe is not None and probe.returncode == 0:
+                return ["sudo", "-n", _WRAPPER]
         return None
 
     def _run(self, cmd: list[str]) -> None:
@@ -76,4 +74,6 @@ class SystemHalt:
         if result.returncode != 0:
             self._pending = False
             err = (result.stderr or result.stdout or _SUDOERS_HINT).strip()
+            if "password is required" in err.lower():
+                err = _SUDOERS_HINT
             self._ack(False, err[:180] or _SUDOERS_HINT)

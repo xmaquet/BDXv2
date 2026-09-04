@@ -188,7 +188,7 @@ Réponse RX :
 
 Limite physique : l’arrêt OS **ne coupe pas** la batterie. Attendre que le Pi soit mort, **puis** couper l’alimentation.
 
-Droits Pi : l’utilisateur `bdxv2` doit pouvoir `sudo -n /sbin/poweroff` (ou `/usr/sbin/poweroff`). Une fois, hors `pi-setup/install.sh` (D-020) :
+Droits Pi : l’utilisateur `bdxv2` doit pouvoir `sudo -n /usr/local/bin/bdx-poweroff` (wrapper `systemctl poweroff`). **Ne pas** se fier à `sudo -l -- /sbin/poweroff` : sur ce Pi, `poweroff` est un lien vers `systemctl`, et `bdxv2` a `(ALL) ALL` **avec** mot de passe — le listage réussit, l’arrêt non. Une fois, hors `pi-setup/install.sh` (D-020) :
 
 ```bash
 bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_halt_sudo.sh
@@ -274,8 +274,8 @@ Presets v1 :
 | `nod` | Hochement pitch autour du repos (+0,05 rad) | Clignotement yeux | `happy1.wav` |
 | `look_around` | Yaw ±30° (±0,52 rad) | Clignotement yeux | `beep1.wav` |
 | `curious` | Léger yaw + pitch au-dessus du repos ; cou ≤ ±0,15 rad | Projecteur un flash | `lamp.wav` |
-| `idle` | **Attente** : boucle jusqu’à Stop. Première salve tout de suite, puis pause `period_s` **entre** salves. Chaque salve **mélange** une chorégraphie tête (tirage `nod` / `look_around` / `curious`) avec son / yeux / projecteur tirés à part. | mix | mix |
-| `idle_mix` | **Attente mix** : boucle jusqu’à Stop. Enchaîne les trois presets **complets** (`nod`, `look_around`, `curious`) dans un **ordre tiré au hasard** (sans répéter le même à cheval sur deux mélanges), avec la même pause `period_s` entre salves. | presets d’origine | presets d’origine |
+| `idle` | **Attente** : boucle jusqu’à Stop. Première salve tout de suite, puis pause `period_s` **entre** salves. Chaque salve **mélange** une chorégraphie tête (tirage `nod` / `look_around` / `curious`) avec son / yeux / projecteur tirés à part. **Antennes : oscillation à chaque salve.** | mix + antennes | mix |
+| `idle_mix` | **Attente mix** : boucle jusqu’à Stop. Enchaîne les trois presets **complets** (`nod`, `look_around`, `curious`) dans un **ordre tiré au hasard** (sans répéter le même à cheval sur deux mélanges), avec la même pause `period_s` entre salves. **Antennes : oscillation à chaque salve.** | presets d’origine + antennes | presets d’origine |
 
 Consignes tête **clampées** (`DuckConfig` : `joints_gravity_rest`, `joints_limits_viable`). `head_roll` v1 : **[-0,35 ; +0,07] rad**. Jambes **non** commandées. `HWI.turn_on()` **interdit** (ça couple les 14 axes).
 
