@@ -29,4 +29,7 @@
     <color name="bdx_muted">#ADB5BD</color>
     <color name="bdx_dim">#6C757D</color>
     <color name="bdx_danger">#DC3545</color>
+    <color name="metal_scrim">#99101010</color>
+    <color name="metal_cutout">#B3121212</color>
+    <color name="metal_edge">#1A1A1A</color>
 </resources>

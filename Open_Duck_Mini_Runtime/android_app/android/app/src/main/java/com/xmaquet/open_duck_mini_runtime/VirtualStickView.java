@@ -36,12 +36,12 @@ public class VirtualStickView extends View {
   }
 
   private void init() {
-    basePaint.setColor(0xFF343A40);
+    basePaint.setColor(0xFF2A2A2A);
     basePaint.setStyle(Paint.Style.FILL);
-    ringPaint.setColor(0xFF6C757D);
+    ringPaint.setColor(0xFF8A8680);
     ringPaint.setStyle(Paint.Style.STROKE);
-    ringPaint.setStrokeWidth(3f);
-    knobPaint.setColor(0xFF0D6EFD);
+    ringPaint.setStrokeWidth(3.5f);
+    knobPaint.setColor(0xFF6A6864);
     knobPaint.setStyle(Paint.Style.FILL);
   }
 
@@ -69,6 +69,7 @@ public class VirtualStickView extends View {
     canvas.drawCircle(cx, cy, radius, basePaint);
     canvas.drawCircle(cx, cy, radius, ringPaint);
     canvas.drawCircle(knobX, knobY, radius * 0.32f, knobPaint);
+    canvas.drawCircle(knobX, knobY, radius * 0.32f, ringPaint);
   }
 
   @Override

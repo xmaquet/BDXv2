@@ -199,6 +199,7 @@ public class MainActivity extends BridgeActivity {
         root,
         new ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    MetalDrawables.skin(root);
 
     screenContainer = root.findViewById(R.id.screen_container);
     bleBanner = root.findViewById(R.id.ble_banner);
@@ -272,9 +273,15 @@ public class MainActivity extends BridgeActivity {
     }
   }
 
-  private void bindHome() {
-    View view = getLayoutInflater().inflate(R.layout.screen_home, screenContainer, false);
+  private View inflateScreen(int layout) {
+    View view = getLayoutInflater().inflate(layout, screenContainer, false);
     screenContainer.addView(view);
+    MetalDrawables.skin(view);
+    return view;
+  }
+
+  private void bindHome() {
+    View view = inflateScreen(R.layout.screen_home);
     view.findViewById(R.id.home_pilot).setOnClickListener(v -> showScreen(Screen.PILOT));
     view.findViewById(R.id.home_tests).setOnClickListener(v -> showScreen(Screen.TESTS));
     view.findViewById(R.id.home_demo).setOnClickListener(v -> showScreen(Screen.DEMO));
@@ -298,8 +305,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void bindPilot() {
-    View view = getLayoutInflater().inflate(R.layout.screen_pilot, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(R.layout.screen_pilot);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     statusView = view.findViewById(R.id.pilot_status);
     rxLine = view.findViewById(R.id.pilot_rx_line);
@@ -320,8 +326,7 @@ public class MainActivity extends BridgeActivity {
 
   private void bindTests() {
     testsGen++;
-    View view = getLayoutInflater().inflate(R.layout.screen_tests, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(R.layout.screen_tests);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     testsHint = view.findViewById(R.id.tests_hint);
     testEyesSteady = view.findViewById(R.id.test_eyes_steady);
@@ -343,8 +348,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void bindDemo() {
-    View view = getLayoutInflater().inflate(R.layout.screen_demo, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(R.layout.screen_demo);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     demoHint = view.findViewById(R.id.demo_hint);
     view.findViewById(R.id.demo_nod).setOnClickListener(v -> startDemo("nod"));
@@ -465,8 +469,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void bindSettings() {
-    View view = getLayoutInflater().inflate(R.layout.screen_settings, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(R.layout.screen_settings);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     view.findViewById(R.id.settings_wifi).setOnClickListener(v -> showScreen(Screen.WIFI));
     sysCpuView = view.findViewById(R.id.sys_cpu);
@@ -576,8 +579,7 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void bindWifi() {
-    View view = getLayoutInflater().inflate(R.layout.screen_wifi, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(R.layout.screen_wifi);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.SETTINGS));
     wifiHint = view.findViewById(R.id.wifi_hint);
     wifiSsidView = view.findViewById(R.id.wifi_ssid);
@@ -603,14 +605,12 @@ public class MainActivity extends BridgeActivity {
   }
 
   private void bindSimple(int layout) {
-    View view = getLayoutInflater().inflate(layout, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(layout);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
   }
 
   private void bindShutdown() {
-    View view = getLayoutInflater().inflate(R.layout.screen_shutdown, screenContainer, false);
-    screenContainer.addView(view);
+    View view = inflateScreen(R.layout.screen_shutdown);
     view.findViewById(R.id.btn_back_home).setOnClickListener(v -> showScreen(Screen.HOME));
     shutdownConfirm = view.findViewById(R.id.shutdown_confirm);
     shutdownSend = view.findViewById(R.id.shutdown_send);
@@ -880,6 +880,19 @@ public class MainActivity extends BridgeActivity {
     paintWifiList();
   }
 
+  private static String wifiUserMessage(String message) {
+    if (message == null || message.isEmpty()) {
+      return message == null ? "" : message;
+    }
+    String low = message.toLowerCase(Locale.ROOT);
+    if (low.contains("no network with ssid")) {
+      return "Réseau vu au scan, mais le Pi ne trouve pas de BSS 2,4 GHz compatible "
+          + "(cache NetworkManager périmé ou profil figé). Réessaie ; "
+          + "si ça revient, réinstaller le wrapper Wi‑Fi du Pi.";
+    }
+    return message;
+  }
+
   private static String wifiStateLabel(String state) {
     if ("connected".equals(state)) {
       return "connecté";
@@ -925,6 +938,7 @@ public class MainActivity extends BridgeActivity {
         continue;
       }
       View row = getLayoutInflater().inflate(R.layout.item_wifi_net, wifiList, false);
+      MetalDrawables.skin(row);
       TextView name = row.findViewById(R.id.wifi_net_ssid);
       TextView meta = row.findViewById(R.id.wifi_net_meta);
       TextView badge = row.findViewById(R.id.wifi_net_badge);
@@ -976,7 +990,7 @@ public class MainActivity extends BridgeActivity {
         String message = o.optString("message");
         boolean accepted = o.optBoolean("accepted");
         if (!message.isEmpty()) {
-          lastWifiMessage = message;
+          lastWifiMessage = wifiUserMessage(message);
         }
         if ("scan".equals(o.optString("action")) && !accepted) {
           wifiScanning = false;
@@ -993,7 +1007,9 @@ public class MainActivity extends BridgeActivity {
         } else {
           lastWifiRssi = Integer.MIN_VALUE;
         }
-        lastWifiMessage = o.optString("message", lastWifiMessage);
+        String incomingMsg = o.optString("message", lastWifiMessage);
+        lastWifiMessage =
+            incomingMsg.isEmpty() ? incomingMsg : wifiUserMessage(incomingMsg);
         if (o.has("default_ssid")) {
           lastWifiDefaultSsid =
               o.isNull("default_ssid") ? "" : o.optString("default_ssid", "");
@@ -1235,10 +1251,10 @@ public class MainActivity extends BridgeActivity {
       return;
     }
     if (active) {
-      button.setBackgroundResource(R.drawable.btn_flat_yellow);
+      MetalDrawables.install(button, R.drawable.btn_flat_yellow);
       button.setTextColor(ContextCompat.getColor(this, R.color.bs_dark));
     } else {
-      button.setBackgroundResource(idleBg);
+      MetalDrawables.install(button, idleBg);
       button.setTextColor(ContextCompat.getColor(this, R.color.bs_light));
     }
   }
@@ -1318,7 +1334,7 @@ public class MainActivity extends BridgeActivity {
       return;
     }
     if (connecting) {
-      bleBanner.setBackgroundResource(R.drawable.ble_banner_off);
+      MetalDrawables.install(bleBanner, R.drawable.ble_banner_off);
       bleDot.setBackgroundResource(R.drawable.ble_dot_off);
       bleBannerText.setText("BLE RECHERCHE…");
       bleBannerConnect.setText("Annuler");
@@ -1327,17 +1343,17 @@ public class MainActivity extends BridgeActivity {
     }
     bleBannerConnect.setEnabled(true);
     if (connected) {
-      bleBanner.setBackgroundResource(R.drawable.ble_banner_on);
+      MetalDrawables.install(bleBanner, R.drawable.ble_banner_on);
       bleDot.setBackgroundResource(R.drawable.ble_dot_on);
       bleBannerText.setText("BLE CONNECTÉ");
       bleBannerConnect.setText("Couper");
     } else if (expectingHalt) {
-      bleBanner.setBackgroundResource(R.drawable.ble_banner_off);
+      MetalDrawables.install(bleBanner, R.drawable.ble_banner_off);
       bleDot.setBackgroundResource(R.drawable.ble_dot_off);
       bleBannerText.setText("ROBOT ÉTEINT");
       bleBannerConnect.setText("Connecter");
     } else {
-      bleBanner.setBackgroundResource(R.drawable.ble_banner_error);
+      MetalDrawables.install(bleBanner, R.drawable.ble_banner_error);
       bleDot.setBackgroundResource(R.drawable.ble_dot_off);
       bleBannerText.setText("BLE DÉCONNECTÉ");
       bleBannerConnect.setText("Connecter");

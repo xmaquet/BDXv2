@@ -9,15 +9,35 @@
     <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:windowBackground">@color/bs_dark</item>
-        <item name="android:statusBarColor">@color/bs_dark</item>
-        <item name="android:navigationBarColor">@color/bs_dark</item>
+        <item name="android:windowBackground">@color/metal_cutout</item>
+        <item name="android:statusBarColor">@color/metal_cutout</item>
+        <item name="android:navigationBarColor">@color/metal_cutout</item>
         <item name="android:textColorPrimary">@color/bs_light</item>
         <item name="colorControlNormal">@color/bs_light</item>
     </style>
 
     <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
-        <item name="android:windowBackground">@color/bs_dark</item>
+        <item name="android:windowBackground">@color/metal_cutout</item>
+    </style>
+
+    <style name="Bdx" />
+
+    <style name="Bdx.Title">
+        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/bs_light</item>
+        <item name="android:shadowColor">#CC000000</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">2</item>
+        <item name="android:shadowRadius">4</item>
+    </style>
+
+    <style name="Bdx.Hint">
+        <item name="android:textColor">@color/bs_muted</item>
+        <item name="android:shadowColor">#AA000000</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">1</item>
+        <item name="android:shadowRadius">3</item>
     </style>
 
     <style name="Bdx.Btn" parent="Widget.AppCompat.Button.Borderless">
