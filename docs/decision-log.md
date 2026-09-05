@@ -175,7 +175,7 @@ Les scripts existants sont un point de départ (**ADAPTER**, pas réécrire sans
 
 Une fois l’OS réinstallé, l’agent se connecte au Pi en **SSH** pour piloter installation, tests et actions.
 
-**Avancement (2026-08-25) :** OS posé ; SSH joignable. IP **constatée 2026-08-30 : `192.168.10.132`** (auparavant `192.168.10.131`, DHCP). La clause « pas de SSH avant l’OS » est **satisfaite**.
+**Avancement (2026-08-25) :** OS posé ; SSH joignable. IP **DHCP** : **2026-09-05 `10.160.173.117`** (auparavant `192.168.10.132`, `192.168.10.131`). La clause « pas de SSH avant l’OS » est **satisfaite**.
 
 ---
 
@@ -345,6 +345,8 @@ L’accueil comporte une zone **Monitoring** (carte, avant Éteindre ; anciennem
 
 **Avancement (2026-08-30) :** déployé sur le banc ; clone Pi @ `124aeb1`.
 
+**Avancement (2026-09-05) :** `join` rafraîchit le cache `nmcli` ; si le profil NM est figé (BSSID / 5 GHz), le wrapper desserre puis retente le BSS 2,4 GHz.
+
 L’écran Monitoring affiche aussi la **santé Pi** (CPU, RAM, température, disque, uptime) via `{ "type": "sys" }`, poll ~8 s seulement tant que l’écran est ouvert. Pas de charge extra ailleurs.
 
 ---
@@ -399,11 +401,13 @@ Quand le BDX est **sur son support** (pas en marche), l’app lance un **mode d�
 
 **Contrat :** `{ "type": "demo", ... }` dans `Open_Duck_Mini_Runtime/docs/protocol.md`. Presets : `nod`, `look_around`, `curious`, **`idle` (attente, mix d’effets)**, **`idle_mix` (les 3 presets dans un ordre aléatoire)**. Pause entre salves : `period_s` (défaut 30, clamp 5–300), réglée dans Monitoring. **Attente / Attente mix : oscillation d’antennes à chaque salve.** L’app déclenche ; le Pi joue. Pas de stream d’angles.
 
-**Limites banc :** clamp via `DuckConfig` (`joints_gravity_rest`, `joints_limits_viable`). Roll asymétrique tant que les horns ne sont pas recalés. Stop → repos gravité (pitch ≈ +0,05 rad). Uniquement les servos tête sous couple (kp 12–16).
+**Limites banc :** clamp via `DuckConfig` (`joints_gravity_rest`, `joints_limits_viable`). Roll asymétrique tant que les horns ne sont pas recalés. Stop → repos gravité (pitch ≈ +0,05 rad). Uniquement les servos tête sous couple (kp 12–16). **Cou (ID 30) :** jamais commandé hors repos gravité (2026-09-05) — le look-up « Curieux » est `head_pitch` seulement. Après salve / Stop, le repos est réécrit ~0,7 s avant couple OFF.
 
 **Exclusivité :** démo en cours → `ControllerFrame` ignoré ; Tests accessoires refusés. Poll STS en pause (même port série).
 
 **UI :** carte d’accueil **Mode démo**.
+
+**Avancement (2026-09-05) :** correctif cou coincé en arrière (servo 30) dans `ble_demo.py`. Self-test : toutes les keyframes `neck_pitch == rest`.
 
 ---
 

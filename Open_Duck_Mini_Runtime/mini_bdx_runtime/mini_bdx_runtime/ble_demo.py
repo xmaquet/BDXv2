@@ -18,6 +18,7 @@ NECK_AMP = 0.15
 ROLL_MIN = -0.35
 ROLL_MAX = 0.07
 STEP_S = 0.05
+REST_HOLD_S = 0.7
 HEAD_PRESETS = ("nod", "look_around", "curious")
 LOOPING_PRESETS = ("idle", "idle_mix")
 
@@ -111,9 +112,9 @@ def build_timeline(cfg: Any, preset: str) -> list[dict[str, Any]]:
             {"t_ms": 0, "head": rest, "sound": "lamp.wav", "projector": True},
             {
                 "t_ms": 800,
-                "head": clamp_head(cfg, 0.30, pr + 0.15, 0.0, nr + 0.10),
+                "head": clamp_head(cfg, 0.30, pr + 0.15, 0.0, nr),
             },
-            {"t_ms": 1800, "head": clamp_head(cfg, 0.30, pr + 0.15, 0.0, nr + 0.10), "projector": False},
+            {"t_ms": 1800, "head": clamp_head(cfg, 0.30, pr + 0.15, 0.0, nr), "projector": False},
             {"t_ms": 2800, "head": rest},
             {"t_ms": 3600, "head": rest},
         ]
@@ -258,8 +259,7 @@ class DemoMode:
             self._emit_state("play")
             self._play_once(build_timeline(self._cfg, preset), watchdog_s=WATCHDOG_S)
             self._emit_state("rest")
-            self._goto(rest_pose(self._cfg))
-            time.sleep(0.3)
+            self._hold_rest(REST_HOLD_S)
 
     def _play_idle(self, preset: str) -> None:
         deck: list[str] = []
@@ -277,16 +277,38 @@ class DemoMode:
                 timeline = build_mixed_timeline(self._cfg)
             self._emit_state("play")
             self._play_once(timeline, watchdog_s=12.0)
+            self._hold_rest(REST_HOLD_S)
             if self._stop.is_set():
                 break
-            self._goto(rest_pose(self._cfg))
             self._fx_off()
             self._emit_state("wait")
-            if self._stop.wait(period):
+            if self._wait_at_rest(period):
                 break
         self._emit_state("rest")
-        self._goto(rest_pose(self._cfg))
-        time.sleep(0.2)
+        self._hold_rest(0.3)
+
+    def _hold_rest(self, seconds: float) -> None:
+        if self._cfg is None:
+            return
+        rest = rest_pose(self._cfg)
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < seconds:
+            self._goto(rest)
+            time.sleep(STEP_S)
+
+    def _wait_at_rest(self, seconds: float) -> bool:
+        """True si Stop pendant l’attente. Réécrit le repos pour ne pas rester sur la dernière salve."""
+        if seconds <= 0:
+            return self._stop.is_set()
+        deadline = time.monotonic() + seconds
+        rest = rest_pose(self._cfg)
+        while True:
+            remain = deadline - time.monotonic()
+            if remain <= 0:
+                return False
+            self._goto(rest)
+            if self._stop.wait(min(0.4, remain)):
+                return True
 
     def _play_once(self, timeline: list[dict[str, Any]], watchdog_s: float) -> None:
         t0 = time.monotonic()
@@ -428,8 +450,7 @@ class DemoMode:
     def _cleanup(self) -> None:
         try:
             if self._cfg is not None and self._hwi is not None:
-                self._goto(rest_pose(self._cfg))
-                time.sleep(0.2)
+                self._hold_rest(REST_HOLD_S)
                 self._hwi.io.disable_torque(list(HEAD_IDS))
         except Exception as e:
             print(f"[ble_demo] couple tête {e}", flush=True)
@@ -475,6 +496,7 @@ def _self_test() -> None:
         assert tl and tl[0]["head"]["head_pitch"] == rest["head_pitch"]
         for ev in tl:
             h = ev["head"]
+            assert abs(h["neck_pitch"] - rest["neck_pitch"]) < 1e-9
             reclamped = clamp_head(cfg, h["head_yaw"], h["head_pitch"], h["head_roll"], h["neck_pitch"])
             for k in HEAD_JOINTS:
                 assert abs(h[k] - reclamped[k]) < 1e-9
@@ -483,6 +505,7 @@ def _self_test() -> None:
         assert mix and mix[0].get("antennas") == "wiggle"
         for ev in mix:
             h = ev["head"]
+            assert abs(h["neck_pitch"] - rest["neck_pitch"]) < 1e-9
             reclamped = clamp_head(cfg, h["head_yaw"], h["head_pitch"], h["head_roll"], h["neck_pitch"])
             for k in HEAD_JOINTS:
                 assert abs(h[k] - reclamped[k]) < 1e-9

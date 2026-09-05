@@ -33,6 +33,69 @@ profile_for_ssid() {
   return 1
 }
 
+refresh_scan() {
+  # --rescan yes / rescan sans borne peut bloquer. Timeout + courte pause.
+  timeout 5 nmcli device wifi rescan ifname "${DEV}" >/dev/null 2>&1 || true
+  sleep 2
+}
+
+# Meilleur BSSID 2,4 GHz pour un SSID (sortie terse nmcli, champs échappés).
+best_bssid_24() {
+  local want="$1"
+  local line c cur
+  local -a fields
+  local best_bssid="" best_sig=-1
+  local ssid bssid signal freq digits
+  while IFS= read -r line; do
+    [[ -z "${line}" ]] && continue
+    fields=()
+    cur=""
+    local i=0
+    while (( i < ${#line} )); do
+      c="${line:i:1}"
+      if [[ "${c}" == '\' && $((i + 1)) -lt ${#line} ]]; then
+        cur+="${line:i+1:1}"
+        i=$((i + 2))
+      elif [[ "${c}" == ':' ]]; then
+        fields+=("${cur}")
+        cur=""
+        i=$((i + 1))
+      else
+        cur+="${c}"
+        i=$((i + 1))
+      fi
+    done
+    fields+=("${cur}")
+    (( ${#fields[@]} >= 4 )) || continue
+    ssid="${fields[0]}"
+    bssid="${fields[1]}"
+    signal="${fields[2]}"
+    freq="${fields[3]}"
+    [[ "${ssid}" == "${want}" ]] || continue
+    digits="${freq%%[^0-9]*}"
+    [[ -n "${digits}" && "${digits}" -lt 3000 ]] || continue
+    [[ "${signal}" =~ ^[0-9]+$ ]] || signal=0
+    if (( signal > best_sig )); then
+      best_sig="${signal}"
+      best_bssid="${bssid}"
+    fi
+  done < <(nmcli -t -e yes -f SSID,BSSID,SIGNAL,FREQ device wifi list ifname "${DEV}" 2>/dev/null || true)
+  [[ -n "${best_bssid}" ]] || return 1
+  printf '%s\n' "${best_bssid}"
+}
+
+connect_ssid() {
+  local ssid="$1" psk="$2" bssid="${3:-}"
+  local args=(device wifi connect "${ssid}" ifname "${DEV}")
+  if [[ -n "${psk}" ]]; then
+    args+=(password "${psk}")
+  fi
+  if [[ -n "${bssid}" ]]; then
+    args+=(bssid "${bssid}")
+  fi
+  nmcli "${args[@]}"
+}
+
 emit_active_ssid() {
   printf 'BDX.SSID:%s\n' "$(active_ssid)"
 }
@@ -54,9 +117,7 @@ case "${action}" in
   scan)
     emit_active_ssid
     printf '%s\n' "---"
-    # --rescan yes / rescan sans borne peut bloquer le wrapper. Timeout + courte pause.
-    timeout 5 nmcli device wifi rescan ifname "${DEV}" >/dev/null 2>&1 || true
-    sleep 2
+    refresh_scan
     nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY,FREQ device wifi list ifname "${DEV}"
     ;;
   prefer)
@@ -87,16 +148,25 @@ case "${action}" in
     if [[ "${current}" == "${ssid}" ]]; then
       exit 0
     fi
+    # Scan tablette ≠ cache NM au join : sans rescan, nmcli répond
+    # « No network with SSID found » alors que la liste vient de l’afficher.
+    refresh_scan
     name="$(profile_for_ssid "${ssid}" || true)"
     if [[ -n "${name}" ]]; then
       # Profil déjà connu : on l’active. On ne réécrit pas le mot de passe
       # (un PSK tapé à tort sur la tablette casserait le profil maison).
-      nmcli connection up "${name}"
-    elif [[ -z "${psk}" ]]; then
-      nmcli device wifi connect "${ssid}" ifname "${DEV}"
-    else
-      nmcli device wifi connect "${ssid}" password "${psk}" ifname "${DEV}"
+      # BSSID / bande figés (mesh, 5 GHz) : le 2,4 GHz est visible au scan
+      # mais `connection up` ne trouve aucun BSS compatible.
+      nmcli connection modify "${name}" \
+        802-11-wireless.bssid '' \
+        802-11-wireless.band bg \
+        connection.interface-name "${DEV}" >/dev/null 2>&1 || true
+      if nmcli connection up "${name}"; then
+        exit 0
+      fi
     fi
+    bssid="$(best_bssid_24 "${ssid}" || true)"
+    connect_ssid "${ssid}" "${psk}" "${bssid}"
     ;;
   *)
     echo "wifi : action inconnue" >&2

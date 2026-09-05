@@ -156,6 +156,17 @@ def sanitize_ssid(raw: Any) -> str | None:
     return ssid
 
 
+def humanize_wifi_error(raw: str) -> str:
+    """Traduit les échecs nmcli fréquents. Le scan tablette n’est pas le cache du join."""
+    low = raw.lower()
+    if "no network with ssid" in low:
+        return (
+            "Réseau vu au scan, mais NetworkManager ne trouve pas de BSS 2,4 GHz "
+            "compatible (cache périmé ou profil figé sur un BSSID / 5 GHz)."
+        )
+    return raw
+
+
 def _parse_freq(freq_s: str) -> int | None:
     digits = ""
     for ch in freq_s:
@@ -387,16 +398,16 @@ class RobotWifi:
 
     def _join_run(self, ssid: str, psk: str, auto: bool = False) -> None:
         default = self._load_default()
-        ok = False
         try:
-            self._run("join", ssid, psk)
+            with self._op_lock:
+                self._run("join", ssid, psk)
         except FileNotFoundError:
             if auto:
                 self._auto_fail.add(ssid)
             self._push(_state(ssid, "failed", None, None, _SUDOERS_HINT, default))
             self._ack("join", False, _SUDOERS_HINT)
         except Exception as e:
-            msg = str(e)[:180]
+            msg = humanize_wifi_error(str(e)[:180])
             if auto:
                 self._auto_fail.add(ssid)
                 msg = "Réseau par défaut visible, mot de passe requis ou profil inconnu."
@@ -404,7 +415,6 @@ class RobotWifi:
             self._ack("join", False, msg)
         else:
             self._auto_fail.discard(ssid)
-            ok = True
         finally:
             with self._lock:
                 self._busy = False
@@ -442,7 +452,7 @@ def _run_wrapper(action: str, ssid: str = "", psk: str = "") -> tuple[str, str]:
             input=psk,
             capture_output=True,
             text=True,
-            timeout=45,
+            timeout=60,
         )
         if result.returncode != 0:
             err = (result.stderr or result.stdout or "join échoué").strip()
@@ -539,6 +549,8 @@ def _self_test() -> None:
     assert sanitize_ssid("ok") == "ok"
     assert sanitize_ssid("a" * 33) is None
     assert sanitize_ssid("a\nb") is None
+    assert "BSS 2,4 GHz" in humanize_wifi_error("Error: No network with SSID 'XportLab' found.")
+    assert humanize_wifi_error("association refusée") == "association refusée"
 
     class Fake:
         def __init__(self) -> None:

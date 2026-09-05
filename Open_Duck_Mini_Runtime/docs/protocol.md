@@ -137,6 +137,7 @@ Le robot peut envoyer des logs/états sur RX (JSON libre, ex. `{ "type": "log", 
 | `cannot import name 'Service' from 'bluez_peripheral.gatt'` | API 0.1.7 : `Service` est dans `gatt.service` | Mettre à jour `ble_gatt_server.py` depuis la branche du fork |
 | `InterfaceNotFoundError: org.bluez.Adapter1` | BlueZ 5.8x : sous `/org/bluez`, certains nœuds ne sont pas des adaptateurs HCI | Version récente du serveur qui **filtre** les objets sans `Adapter1`, ou lancer avec **`--dbus-adapter /org/bluez/hci0`** |
 | Bluetooth éteint / tablette « BLE ÉCHEC » et pas de hello | `bdx-ble-robot` pas lancé (allumage seul insuffisant) | `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_ble_robot.sh --dump` ou autostart `enable_ble_robot_boot.sh` |
+| Tablette « BLE CONNECTÉ » mais commandes muettes (pas de log `[ble_gatt] demo` / `test`) | Après **SIGKILL** GATT, le lien GAP peut rester alors que l’ATT est mort | Dans l’app : **Couper** puis **Connecter**. Côté Pi : `bluetoothctl disconnect <MAC>` puis `systemctl kill -s SIGKILL bdx-ble-robot` et `systemctl start bdx-ble-robot` |
 | Pairing / agent | Droits D-Bus | `sudo usermod -aG bluetooth $USER` + reconnexion ; ou `--no-agent` si déjà appairé |
 | Avertissement ONNX « GPU device discovery failed » sur Pi | Import `onnxruntime` ailleurs dans la chaîne | Sans impact sur le BLE ; ignorer ou retarder l’import ONNX si les logs gênent |
 
@@ -159,6 +160,8 @@ bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/enable_ble_robot_boot.sh
 ```
 
 Ensuite un reboot joue le hello et annonce le BLE. Lancement manuel : `bash ~/BDXv2/Open_Duck_Mini_Runtime/scripts/run_bdx_ble_robot.sh --dump`. Ne pas lancer deux instances à la fois.
+
+**SIGKILL :** `systemctl restart` peut rester coincé (le process ignore SIGTERM). Relance : `sudo systemctl kill -s SIGKILL bdx-ble-robot.service` puis `start`. La tablette doit **Couper / Connecter** : un bandeau « BLE CONNECTÉ » peut survivre sur un ATT mort.
 
 ## Messages hors ControllerFrame
 
@@ -273,13 +276,13 @@ Presets v1 :
 |----------|------|------------|-----|
 | `nod` | Hochement pitch autour du repos (+0,05 rad) | Clignotement yeux | `happy1.wav` |
 | `look_around` | Yaw ±30° (±0,52 rad) | Clignotement yeux | `beep1.wav` |
-| `curious` | Léger yaw + pitch au-dessus du repos ; cou ≤ ±0,15 rad | Projecteur un flash | `lamp.wav` |
+| `curious` | Léger yaw + pitch tête au-dessus du repos ; **cou (ID 30) fixé au repos gravité** | Projecteur un flash | `lamp.wav` |
 | `idle` | **Attente** : boucle jusqu’à Stop. Première salve tout de suite, puis pause `period_s` **entre** salves. Chaque salve **mélange** une chorégraphie tête (tirage `nod` / `look_around` / `curious`) avec son / yeux / projecteur tirés à part. **Antennes : oscillation à chaque salve.** | mix + antennes | mix |
 | `idle_mix` | **Attente mix** : boucle jusqu’à Stop. Enchaîne les trois presets **complets** (`nod`, `look_around`, `curious`) dans un **ordre tiré au hasard** (sans répéter le même à cheval sur deux mélanges), avec la même pause `period_s` entre salves. **Antennes : oscillation à chaque salve.** | presets d’origine + antennes | presets d’origine |
 
 Consignes tête **clampées** (`DuckConfig` : `joints_gravity_rest`, `joints_limits_viable`). `head_roll` v1 : **[-0,35 ; +0,07] rad**. Jambes **non** commandées. `HWI.turn_on()` **interdit** (ça couple les 14 axes).
 
-Pendant une démo : `ControllerFrame` **ignoré**. Tests accessoires **refusés**. Halt arrête d’abord la démo. Watchdog **30 s** par preset one-shot ; `idle` / `idle_mix` n’ont pas de limite de durée (Stop ou halt). Poll STS **en pause** (un seul client sur `/dev/ttyACM0`).
+Pendant une démo : `ControllerFrame` **ignoré**. Tests accessoires **refusés**. Halt arrête d’abord la démo. Watchdog **30 s** par preset one-shot ; `idle` / `idle_mix` n’ont pas de limite de durée (Stop ou halt). Poll STS **en pause** (un seul client sur `/dev/ttyACM0`). **Cou (ID 30) :** toutes les keyframes au repos gravité ; après salve / Stop, le repos est réécrit ~0,7 s avant couple OFF.
 
 Réponses RX :
 
@@ -332,6 +335,7 @@ Règles :
 - `join` : `confirm` **doit** être le booléen JSON `true`. Sinon refus, **aucune** modification réseau.
 - `set_default` : `confirm` **doit** être `true`. `ssid` = réseau **par défaut** (prioritaire si visible). `ssid` vide = oublier le défaut.
 - `psk` omis ou `""` = réseau ouvert, ou profil NetworkManager déjà connu. Le mot de passe **ne revient jamais** en RX, ni dans les logs robot.
+- `join` rafraîchit le cache `nmcli` avant l’association. Un SSID listé au scan peut quand même échouer si le profil NetworkManager est figé (BSSID / bande 5 GHz) : le wrapper desserre ces contraintes, puis retente `device wifi connect` sur le meilleur BSS 2,4 GHz.
 - Pi Zero 2W : **2,4 GHz seulement**. Les BSS 5 GHz ne sont pas proposés.
 - Plusieurs profils NetworkManager **conservés** (on n’efface pas l’ancien réseau).
 - Si un défaut est enregistré et qu’il apparaît au **scan** alors que le robot est sur un autre SSID, le robot **tente** de s’y associer (profil déjà connu, sans redemander le mot de passe).

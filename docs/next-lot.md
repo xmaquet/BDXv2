@@ -4,7 +4,7 @@ Roadmap révisée (2026-08-24, PO). Point 2026-08-30.
 
 ## Lot 0 — Monorepo BDXv2
 
-**Statut :** fait. [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2) — `main` @ `124aeb1`.
+**Statut :** fait. [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2) — `main`.
 
 ---
 
@@ -18,7 +18,7 @@ Hors périmètre : oreilles / antennes (PWM).
 
 ## Lot 1 — Réinstall OS Pi Zero 2W
 
-**Statut :** fait (2026-08-25). SSH `bdxv2` ; IP récente **`192.168.10.132`**.
+**Statut :** fait (2026-08-25). SSH `bdxv2` ; IP DHCP récente **`10.160.173.117`** (2026-09-05).
 
 ---
 
@@ -34,9 +34,9 @@ Hors périmètre : oreilles / antennes (PWM).
 
 ## Lot 3 — App Android BLE native
 
-**Statut :** **tenu** : 3a, Tests, halt, hello, accueil STS, Monitoring, Wi‑Fi banc (D-023), **Mode démo (D-027)** APK **1.3.27**. Prompt démo : `docs/hardware/PROMPT-agent-demo-mode.md`.
+**Statut :** **tenu** : 3a, Tests, halt, hello, accueil STS, Monitoring, Wi‑Fi banc (D-023), **Mode démo (D-027)** APK **1.3.27** (Git). Cou 30 au repos gravité (2026-09-05). Prompt démo : `docs/hardware/PROMPT-agent-demo-mode.md`.
 
-**Reste lot 3 :** relancer `bdx-ble-robot` (SIGKILL) pour **entendre** BLE puis Wi‑Fi OK/échec. Valider à l’oreille sur robot.
+**Reste lot 3 :** après un SIGKILL GATT, **reconnecter** la tablette (bandeau CONNECTÉ n’implique pas un ATT vivant). Valider visuellement Curieux / Attente mix (cou pas coincé en arrière).
 
 **Hors périmètre immédiat :** Xbox, vidéo (D-022), reste D-024 (énergie, idle, Wi‑Fi en session), **D-025** (liste de robots).
 
@@ -81,4 +81,4 @@ L’écran **Piloter** envoie déjà `ControllerFrame` v1 (`protocol.md`). La co
 
 ---
 
-**Prochaine étape recommandée :** APK **1.3.27** (Run Android Studio) ; valider le bandeau accueil pendant une démo. **Pas** le lot 2. **Pas** D-025 / D-026 / reste D-024.
+**Prochaine étape recommandée :** `git pull` Pi + SIGKILL GATT + **Couper / Connecter** BLE ; valider Curieux (cou 30). APK Git **1.3.27**. **Pas** le lot 2. **Pas** D-025 / D-026 / reste D-024.

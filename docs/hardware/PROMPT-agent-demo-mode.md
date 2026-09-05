@@ -136,7 +136,7 @@ Scripts banc utiles (lecture seule / inspiration, **ne pas** exposer tels quels 
 
 ## Démarrage agent
 
-1. Lire `docs/current-state.md` + `~/duck_config.json` sur le Pi si joignable (`bdxv2@192.168.10.132`).
+1. Lire `docs/current-state.md` + `~/duck_config.json` sur le Pi si joignable (`bdxv2@<IP DHCP>` ; 2026-09-05 : `10.160.173.117`).
 2. Proposer le **schéma JSON final** `type: demo` + **liste des 2–3 presets v1** au PO ; attendre accord.
 3. Implémenter **protocol.md → Pi → APK** dans cet ordre.
 4. Tester sur banc : preset → stop → repos gravité ; vérifier visuellement avec le PO.

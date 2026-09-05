@@ -1,12 +1,12 @@
 # État actuel — BDXv2
 
-Dernière mise à jour : 2026-09-04 (mode démo D-027, bandeau accueil, APK 1.3.27).
+Dernière mise à jour : 2026-09-05 (démo : cou 30 au repos gravité ; GATT après SIGKILL).
 
 ## Situation du projet
 
-**Brownfield cadrée.** Dépôt : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2) — branche `main`, HEAD `124aeb1`.
+**Brownfield cadrée.** Dépôt : [https://github.com/xmaquet/BDXv2](https://github.com/xmaquet/BDXv2) — branche `main`.
 
-Le Pi Zero 2W a un **OS Lite 64-bit**. SSH : user / hostname `bdxv2`. IP **constatée 2026-08-30 : `192.168.10.132`** (DHCP ; a déjà été `192.168.10.131`). Clone `~/BDXv2` **à jour** (`git pull` fast-forward). Venv banc conservé.
+Le Pi Zero 2W a un **OS Lite 64-bit**. SSH : user / hostname `bdxv2`. IP **DHCP** : constatée **2026-09-05 : `10.160.173.117`** (auparavant `192.168.10.132`, puis `192.168.10.131`). Clone `~/BDXv2` : `git pull --ff-only` après chaque push runtime. Venv banc conservé.
 
 Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/install.sh` est **écrite, pas exécutée**.
 
@@ -20,10 +20,10 @@ Le robot sert de **banc de dev** (D-020). L’install complète `pi-setup/instal
 | Banc SSH accessoires (D-016) | **Clos** — yeux, projecteur, HP, antennes validés (polarité **active-high**) |
 | IDs STS3215 (D-014) | 14 IDs **déclarés programmés** |
 | Lecture bus STS | **Validée PO** (2026-08-28) : accueil **STS OK · 7,7 V** (14/14, pyserial `/dev/ttyACM0`) |
-| Lot 3 app BLE native (D-022) | APK **1.3.27** : accueil (bandeau démo active), Piloter, Tests, **Mode démo**, halt, Monitoring |
+| Lot 3 app BLE native (D-022) | APK **1.3.27** (Git) : accueil (bandeau démo active), Piloter, Tests, **Mode démo**, halt, Monitoring |
 | Halt UI (D-021) | Contrat + envoi OK ; sudoers `bdx-poweroff` + wrapper **LF** (2026-09-04). `/sbin/poweroff` = lien `systemctl` |
 | Hello boot (D-008) | In-process : yeux / antennes / `happy1` ; `BLE_OKAY` ; puis **Wi‑Fi init** `WIFI_OKAY` / `WIFI_PROBLEM` |
-| Autostart GATT | `enable_ble_robot_boot.sh` (une fois). SIGTERM souvent ignoré → SIGKILL pour relancer |
+| Autostart GATT | `enable_ble_robot_boot.sh` (une fois). SIGTERM souvent ignoré → SIGKILL pour relancer. **Après SIGKILL :** la tablette peut rester « BLE CONNECTÉ » sur un ATT mort — Couper puis Connecter (sinon commandes muettes) |
 | Wi‑Fi BLE (D-023) | **Déployé** sur le banc (scan / join / défaut). WAV init **sur le Pi** |
 
 ## App tablette (D-015, D-018, D-022)
@@ -34,13 +34,13 @@ Accueil : Piloter · Tests · **Mode démo** · Vidéo (placeholder) · Monitori
 
 **FAIT banc / robot :** scan/connexion GATT ; TX `ControllerFrame` ; RX notify ; Tests accessoires ; halt ; badges STS + tension ; hello boot + sons BLE/Wi‑Fi d’init **dans le dépôt et sur le clone Pi**.
 
-**Mode démo (D-027) :** presets `nod` / `look_around` / `curious` / **`idle` (Attente, mix d’effets)** / **`idle_mix` (les 3 presets en ordre aléatoire)**. Pause **entre** salves : `period_s` réglable dans **Monitoring** (5–300 s, défaut 30). **Attente / Attente mix : antennes à chaque salve.** Accueil : bandeau jaune **MODE DÉMO EN COURS** tant qu’une séquence tourne. Tête 30–33. Robot **sur support**. `{ "type": "demo" }`. APK **1.3.27**.
+**Mode démo (D-027) :** presets `nod` / `look_around` / `curious` / **`idle` (Attente, mix d’effets)** / **`idle_mix` (les 3 presets en ordre aléatoire)**. **Cou (ID 30) fixé au repos gravité** dans toutes les salves (plus d’inclinaison arrière « Curieux » : le look-up passe par `head_pitch` seulement). Après salve / Stop : repos **réécrit ~0,7 s** avant couple OFF ; pendant la pause Attente, repos réécrit ~0,4 s. Pause **entre** salves : `period_s` réglable dans **Monitoring** (5–300 s, défaut 30). **Attente / Attente mix : antennes à chaque salve.** Accueil : bandeau jaune **MODE DÉMO EN COURS** tant qu’une séquence tourne. Tête 30–33. Robot **sur support**. `{ "type": "demo" }`. APK **1.3.27** (Git).
 
 **Piloter (APK 1.3.23) :** contrat `ControllerFrame` v1 (héritage Xbox, D-018). Rangée haute : **Ant. G** · Tempo +/− · **Ant. D** (G à gauche, D à droite). Sticks **Marche** et **Rotation** alignés. Pause=A, Son=B, Proj.=X, Tête=Y, Rythme=LB, Tempo=croix, Ant. G=`rt`, Ant. D=`lt`, Stop=`estop`. RB non utilisé. Mapping détaillé : `Open_Duck_Mini_Runtime/docs/protocol.md`. Pendant une démo, les trames Piloter sont **ignorées**. La marche n’est **pas** lancée depuis l’app (lot 4).
 
 **Monitoring — santé Pi :** CPU %, charge 1 min, RAM, température SoC, disque `/`, uptime. Poll `{ "type": "sys" }` ~8 s si l’écran est ouvert.
 
-**Wi‑Fi robot (D-023) :** scan / join / défaut **sur le banc**. Hello init : après `BLE_OKAY`, attente ~20 s NM → `WIFI_OKAY` ou `WIFI_PROBLEM` (alors Monitoring). **Pour entendre le nouveau hello :** relancer `bdx-ble-robot` (SIGKILL) — le `git pull` ne recharge pas le process.
+**Wi‑Fi robot (D-023) :** scan / join / défaut **sur le banc**. Hello init : après `BLE_OKAY`, attente ~20 s NM → `WIFI_OKAY` ou `WIFI_PROBLEM` (alors Monitoring). **Pour entendre le nouveau hello :** relancer `bdx-ble-robot` (SIGKILL) — le `git pull` ne recharge pas le process. **Join :** un SSID visible au scan pouvait échouer (`No network with SSID found`) — le wrapper rescane, desserre BSSID/bande, puis retente le BSS 2,4 GHz.
 
 **Pas encore :** commandes « hors Tests » / parallèle marche (lot 4) ; vidéo (D-022, hors BLE) ; **choix de robot** (D-025 : liste + mémoire d’adresse — **ne pas coder** maintenant). Scan actuel = premier appareil au service UUID ; nom annoncé = `Open Duck Mini`.
 
@@ -110,5 +110,5 @@ Captures locales non suivies : `bdxv2-tablet.png`, `Open_Duck_Mini_Runtime/bdxv2
 ### À INVESTIGUER
 
 - Licence runtime amont.
-- Restart systemd `bdx-ble-robot` : le process ignore SIGTERM (peut rester coincé jusqu’au SIGKILL).
+- Restart systemd `bdx-ble-robot` : le process ignore SIGTERM (peut rester coincé jusqu’au SIGKILL). Après SIGKILL, **reconnecter** la tablette (GAP peut survivre, ATT mort).
 - Calibration offsets logiciels : **pas requise** tant que le zéro Feetech tient (`joints_offsets` = 0).
